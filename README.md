@@ -9,7 +9,7 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
 - Stop: `docker compose down`.
 
 ## Access
-- Admin: `admin` / `admin`.
+- Admin: `admin` / `admin` (set via `KC_BOOTSTRAP_ADMIN_*` in `.env`).
 - Nginx load balancer: http://localhost:8080 (routes to both nodes)
 - Direct access (if needed): http://localhost:8081, http://localhost:8082
 
@@ -19,6 +19,6 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
 
 ## Cluster notes
 - Cache stack `tcp` with TCPPING discovery: nodes communicate directly over the Docker network.
-- Starting with plain `start`; hostname strict modes are disabled for local convenience.
+- Starting with plain `start`; hostname strict modes are disabled for local convenience. Hostname is set via `KC_HOSTNAME_URL` / `KC_HOSTNAME_ADMIN_URL` for the reverse proxy on :8080.
 - Nginx uses `least_conn` balancing.
 - Nginx waits until both Keycloak nodes open port 8080 (simple `nc` wait) to avoid early 502s.

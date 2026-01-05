@@ -17,8 +17,8 @@ services:
     depends_on:
       - postgres
     environment:
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
       KC_DB: ${KC_DB}
       KC_DB_URL: ${KC_DB_URL}
       KC_DB_USERNAME: ${KC_DB_USERNAME}
@@ -27,11 +27,11 @@ services:
       KC_CACHE_STACK: tcp
       JGROUPS_DISCOVERY_PROTOCOL: TCPPING
       JGROUPS_DISCOVERY_PROPERTIES: "initial_hosts=keycloak-1[7800],keycloak-2[7800]"
-      KC_PROXY: edge
-      KC_HOSTNAME_STRICT: "false"
-      KC_HOSTNAME_STRICT_HTTPS: "false"
       KC_HOSTNAME: ${KC_HOSTNAME}
-      KC_HOSTNAME_PORT: "${KC_HOSTNAME_PORT}"
+      KC_HOSTNAME_URL: ${KC_HOSTNAME_URL}
+      KC_HOSTNAME_ADMIN_URL: ${KC_HOSTNAME_ADMIN_URL}
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
     command: ["start"]
     volumes:
@@ -52,8 +52,8 @@ services:
     depends_on:
       - postgres
     environment:
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
       KC_DB: ${KC_DB}
       KC_DB_URL: ${KC_DB_URL}
       KC_DB_USERNAME: ${KC_DB_USERNAME}
@@ -62,11 +62,11 @@ services:
       KC_CACHE_STACK: tcp
       JGROUPS_DISCOVERY_PROTOCOL: TCPPING
       JGROUPS_DISCOVERY_PROPERTIES: "initial_hosts=keycloak-1[7800],keycloak-2[7800]"
-      KC_PROXY: edge
-      KC_HOSTNAME_STRICT: "false"
-      KC_HOSTNAME_STRICT_HTTPS: "false"
       KC_HOSTNAME: ${KC_HOSTNAME}
-      KC_HOSTNAME_PORT: "${KC_HOSTNAME_PORT}"
+      KC_HOSTNAME_URL: ${KC_HOSTNAME_URL}
+      KC_HOSTNAME_ADMIN_URL: ${KC_HOSTNAME_ADMIN_URL}
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
     command: ["start"]
     volumes:
