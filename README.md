@@ -12,6 +12,7 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
 - Admin: `admin` / `admin` (set via `KC_BOOTSTRAP_ADMIN_*` in `.env`).
 - Nginx load balancer: http://localhost:8080 (routes to both nodes)
 - Direct access (if needed): http://localhost:8081, http://localhost:8082
+- Symfony app (once you start a server inside the container): http://localhost:8000
 
 ## Extensions
 - Place your JARs/extension folders into `extensions/` (mounted to `/opt/keycloak/providers` on both nodes).
@@ -22,3 +23,12 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
 - Starting with plain `start`; hostname strict modes are disabled for local convenience. Hostname is set via `KC_HOSTNAME_URL` / `KC_HOSTNAME_ADMIN_URL` for the reverse proxy on :8080.
 - Nginx uses `least_conn` balancing.
 - Nginx waits until both Keycloak nodes open port 8080 (simple `nc` wait) to avoid early 502s.
+
+## Symfony service
+- Image built from `symfony.Dockerfile` (PHP 8.3 CLI with Composer, Symfony CLI, pdo_pgsql).
+- Code lives in `./symfony` (mounted into the container).
+- Database for Symfony uses the same Postgres server but a separate DB (`POSTGRES_DB_SYM`), created on first init via `postgres-init/02-symfony-db.sh`.
+- Auto-bootstrap on container start:
+  - If `composer.json` is missing in `./symfony`, a Symfony skeleton is created.
+  - If `vendor/` is missing, `composer install` runs.
+  - PHP built-in server starts in foreground on `0.0.0.0:8000` with docroot `public/`.
