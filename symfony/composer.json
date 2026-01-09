@@ -9,10 +9,12 @@
         "ext-iconv": "*",
         "symfony/console": "7.4.*",
         "symfony/dotenv": "7.4.*",
-        "symfony/flex": "^2",
+        "symfony/flex": "^2.10",
         "symfony/framework-bundle": "7.4.*",
         "symfony/runtime": "7.4.*",
-        "symfony/yaml": "7.4.*"
+        "symfony/yaml": "7.4.*",
+        "apacheborys/symfony-keycloak-bundle": "dev-main@dev",
+        "apacheborys/keycloak-php-client": "dev-main@dev"
     },
     "require-dev": {
     },
@@ -65,5 +67,21 @@
             "allow-contrib": false,
             "require": "7.4.*"
         }
-    }
+    },
+     "repositories": [
+        {
+            "type": "path",
+            "url": "symfony-keycloak-bundle",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "keycloak-php-client",
+            "options": {
+                "symlink": true
+            }
+        }
+    ]
 }

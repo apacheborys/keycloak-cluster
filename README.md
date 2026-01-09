@@ -32,3 +32,6 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
   - If `composer.json` is missing in `./symfony`, a Symfony skeleton is created.
   - If `vendor/` is missing, `composer install` runs.
   - PHP built-in server starts in foreground on `0.0.0.0:8000` with docroot `public/`.
+- Local bundle development:
+  - `BUNDLE_PATH` -> mounts `symfony-keycloak-bundle` into `/app/symfony-keycloak-bundle` (Composer path repo).
+  - `CLIENT_PATH` -> mounts `keycloak-php-client` into `/app/keycloak-php-client` (Composer path repo).

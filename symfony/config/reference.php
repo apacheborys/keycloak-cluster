@@ -690,28 +690,38 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         enabled?: bool|Param, // Default: false
  *     },
  * }
+ * @psalm-type KeycloakBridgeConfig = array{
+ *     base_url: scalar|null|Param,
+ *     client_id: scalar|null|Param,
+ *     client_secret: scalar|null|Param,
+ *     http_client_service?: scalar|null|Param, // Default: null
+ * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,
  *     parameters?: ParametersConfig,
  *     services?: ServicesConfig,
  *     framework?: FrameworkConfig,
+ *     keycloak_bridge?: KeycloakBridgeConfig,
  *     "when@dev"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,
  *         services?: ServicesConfig,
  *         framework?: FrameworkConfig,
+ *         keycloak_bridge?: KeycloakBridgeConfig,
  *     },
  *     "when@prod"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,
  *         services?: ServicesConfig,
  *         framework?: FrameworkConfig,
+ *         keycloak_bridge?: KeycloakBridgeConfig,
  *     },
  *     "when@test"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,
  *         services?: ServicesConfig,
  *         framework?: FrameworkConfig,
+ *         keycloak_bridge?: KeycloakBridgeConfig,
  *     },
  *     ...<string, ExtensionType|array{ // extra keys must follow the when@%env% pattern or match an extension alias
  *         imports?: ImportsConfig,

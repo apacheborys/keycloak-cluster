@@ -121,6 +121,8 @@ services:
     working_dir: /app
     volumes:
       - ./symfony:/app
+      - ${BUNDLE_PATH:-../symfony-keycloak-bundle}:/app/symfony-keycloak-bundle:ro
+      - ${CLIENT_PATH:-../keycloak-php-client}:/app/keycloak-php-client:ro
     ports:
       - "8000:8000"
     networks:

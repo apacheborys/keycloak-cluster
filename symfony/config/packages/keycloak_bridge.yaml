@@ -1,0 +1,5 @@
+keycloak_bridge:
+  base_url: '%env(KEYCLOAK_BRIDGE_BASE_URL)%'
+  client_id: '%env(KEYCLOAK_BRIDGE_CLIENT_ID)%'
+  client_secret: '%env(KEYCLOAK_BRIDGE_CLIENT_SECRET)%'
+  http_client_service: null

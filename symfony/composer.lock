@@ -4,8 +4,156 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9fb4479c02537ee2217706a1faa4f46e",
+    "content-hash": "aec2e7e567ff2998f51864eec27e8d2a",
     "packages": [
+        {
+            "name": "apacheborys/keycloak-php-client",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "keycloak-php-client",
+                "reference": "8999ec85da8afe929907ee444e5942d66f79ef76"
+            },
+            "require": {
+                "php": "^8.4",
+                "php-http/discovery": "^1.0",
+                "psr/http-client": "^1.0"
+            },
+            "type": "library",
+            "extra": {
+                "psr/http-client": "PSR-18 client interfaces for HTTP adapters.",
+                "psr/http-message": "PSR-7 message interfaces for HTTP adapters."
+            },
+            "autoload": {
+                "psr-4": {
+                    "Apacheborys\\KeycloakPhpClient\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Borys Yermokhin",
+                    "email": "borys_ermokhin@yahoo.com"
+                }
+            ],
+            "description": "This bundle helps to communicate your PHP application with Keycloak",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
+            "name": "apacheborys/symfony-keycloak-bundle",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "symfony-keycloak-bundle",
+                "reference": "810fbd4bba677d13585f462a1dd757520e484869"
+            },
+            "require": {
+                "apacheborys/keycloak-php-client": "dev-main",
+                "php": "^8.4",
+                "symfony/config": "^7.4",
+                "symfony/dependency-injection": "^7.4",
+                "symfony/framework-bundle": "^7.4",
+                "symfony/http-kernel": "^7.4"
+            },
+            "type": "symfony-bundle",
+            "autoload": {
+                "psr-4": {
+                    "Apacheborys\\SymfonyKeycloakBridgeBundle\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Symfony bundle that bridges Keycloak PHP client into Symfony applications.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
+            "name": "php-http/discovery",
+            "version": "1.20.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-http/discovery.git",
+                "reference": "82fe4c73ef3363caed49ff8dd1539ba06044910d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-http/discovery/zipball/82fe4c73ef3363caed49ff8dd1539ba06044910d",
+                "reference": "82fe4c73ef3363caed49ff8dd1539ba06044910d",
+                "shasum": ""
+            },
+            "require": {
+                "composer-plugin-api": "^1.0|^2.0",
+                "php": "^7.1 || ^8.0"
+            },
+            "conflict": {
+                "nyholm/psr7": "<1.0",
+                "zendframework/zend-diactoros": "*"
+            },
+            "provide": {
+                "php-http/async-client-implementation": "*",
+                "php-http/client-implementation": "*",
+                "psr/http-client-implementation": "*",
+                "psr/http-factory-implementation": "*",
+                "psr/http-message-implementation": "*"
+            },
+            "require-dev": {
+                "composer/composer": "^1.0.2|^2.0",
+                "graham-campbell/phpspec-skip-example-extension": "^5.0",
+                "php-http/httplug": "^1.0 || ^2.0",
+                "php-http/message-factory": "^1.0",
+                "phpspec/phpspec": "^5.1 || ^6.1 || ^7.3",
+                "sebastian/comparator": "^3.0.5 || ^4.0.8",
+                "symfony/phpunit-bridge": "^6.4.4 || ^7.0.1"
+            },
+            "type": "composer-plugin",
+            "extra": {
+                "class": "Http\\Discovery\\Composer\\Plugin",
+                "plugin-optional": true
+            },
+            "autoload": {
+                "psr-4": {
+                    "Http\\Discovery\\": "src/"
+                },
+                "exclude-from-classmap": [
+                    "src/Composer/Plugin.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Márk Sági-Kazár",
+                    "email": "mark.sagikazar@gmail.com"
+                }
+            ],
+            "description": "Finds and installs PSR-7, PSR-17, PSR-18 and HTTPlug implementations",
+            "homepage": "http://php-http.org",
+            "keywords": [
+                "adapter",
+                "client",
+                "discovery",
+                "factory",
+                "http",
+                "message",
+                "psr17",
+                "psr7"
+            ],
+            "support": {
+                "issues": "https://github.com/php-http/discovery/issues",
+                "source": "https://github.com/php-http/discovery/tree/1.20.0"
+            },
+            "time": "2024-10-02T11:20:13+00:00"
+        },
         {
             "name": "psr/cache",
             "version": "3.0.0",
@@ -157,6 +305,111 @@
                 "source": "https://github.com/php-fig/event-dispatcher/tree/1.0.0"
             },
             "time": "2019-01-08T18:20:26+00:00"
+        },
+        {
+            "name": "psr/http-client",
+            "version": "1.0.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-fig/http-client.git",
+                "reference": "bb5906edc1c324c9a05aa0873d40117941e5fa90"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-fig/http-client/zipball/bb5906edc1c324c9a05aa0873d40117941e5fa90",
+                "reference": "bb5906edc1c324c9a05aa0873d40117941e5fa90",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.0 || ^8.0",
+                "psr/http-message": "^1.0 || ^2.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psr\\Http\\Client\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PHP-FIG",
+                    "homepage": "https://www.php-fig.org/"
+                }
+            ],
+            "description": "Common interface for HTTP clients",
+            "homepage": "https://github.com/php-fig/http-client",
+            "keywords": [
+                "http",
+                "http-client",
+                "psr",
+                "psr-18"
+            ],
+            "support": {
+                "source": "https://github.com/php-fig/http-client"
+            },
+            "time": "2023-09-23T14:17:50+00:00"
+        },
+        {
+            "name": "psr/http-message",
+            "version": "2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-fig/http-message.git",
+                "reference": "402d35bcb92c70c026d1a6a9883f06b2ead23d71"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-fig/http-message/zipball/402d35bcb92c70c026d1a6a9883f06b2ead23d71",
+                "reference": "402d35bcb92c70c026d1a6a9883f06b2ead23d71",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.2 || ^8.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "2.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psr\\Http\\Message\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PHP-FIG",
+                    "homepage": "https://www.php-fig.org/"
+                }
+            ],
+            "description": "Common interface for HTTP messages",
+            "homepage": "https://github.com/php-fig/http-message",
+            "keywords": [
+                "http",
+                "http-message",
+                "psr",
+                "psr-7",
+                "request",
+                "response"
+            ],
+            "support": {
+                "source": "https://github.com/php-fig/http-message/tree/2.0"
+            },
+            "time": "2023-04-04T09:54:51+00:00"
         },
         {
             "name": "psr/log",
@@ -2533,7 +2786,10 @@
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {
+        "apacheborys/keycloak-php-client": 20,
+        "apacheborys/symfony-keycloak-bundle": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
@@ -2541,6 +2797,6 @@
         "ext-ctype": "*",
         "ext-iconv": "*"
     },
-    "platform-dev": [],
+    "platform-dev": {},
     "plugin-api-version": "2.9.0"
 }
