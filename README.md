@@ -26,7 +26,7 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
 - If you see “HTTPS required” from Keycloak when using HTTP, set Realm Settings → Require SSL to `none` (or run `kcadm.sh update realms/master -s sslRequired=none` inside a Keycloak container).
 
 ## Symfony service
-- Image built from `symfony.Dockerfile` (PHP 8.3 CLI with Composer, Symfony CLI, pdo_pgsql).
+- Image built from `symfony.Dockerfile` (PHP 8.4 CLI with Composer, Symfony CLI, pdo_pgsql).
 - Code lives in `./symfony` (mounted into the container).
 - Database for Symfony uses the same Postgres server but a separate DB (`POSTGRES_DB_SYM`), created on first init via `postgres-init/02-symfony-db.sh`.
 - Auto-bootstrap on container start:
@@ -36,3 +36,26 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
 - Local bundle development:
   - `BUNDLE_PATH` -> mounts `symfony-keycloak-bundle` into `/app/symfony-keycloak-bundle` (Composer path repo).
   - `CLIENT_PATH` -> mounts `keycloak-php-client` into `/app/keycloak-php-client` (Composer path repo).
+
+## Xdebug (VS Code)
+- Rebuild and restart the Symfony container after changes:
+  - `docker compose build symfony`
+  - `docker compose up -d symfony`
+- Xdebug listens on port `9003` and connects back to your host (uses `host.docker.internal`).
+- Example VS Code launch config:
+  ```json
+  {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Listen for Xdebug",
+        "type": "php",
+        "request": "launch",
+        "port": 9003,
+        "pathMappings": {
+          "/app": "${workspaceFolder}/symfony"
+        }
+      }
+    ]
+  }
+  ```

@@ -123,6 +123,10 @@ services:
       KEYCLOAK_BRIDGE_USER_REALM: ${KEYCLOAK_BRIDGE_USER_REALM}
       KEYCLOAK_BRIDGE_CLIENT_ID: ${KEYCLOAK_BRIDGE_CLIENT_ID}
       KEYCLOAK_BRIDGE_CLIENT_SECRET: ${KEYCLOAK_BRIDGE_CLIENT_SECRET}
+      XDEBUG_MODE: debug,develop
+      XDEBUG_START_WITH_REQUEST: "yes"
+      XDEBUG_CLIENT_HOST: host.docker.internal
+      XDEBUG_CLIENT_PORT: "9003"
     working_dir: /app
     volumes:
       - ./symfony:/app
