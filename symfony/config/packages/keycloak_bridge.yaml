@@ -1,5 +1,13 @@
 keycloak_bridge:
   base_url: '%env(KEYCLOAK_BRIDGE_BASE_URL)%'
+  client_realm: '%env(KEYCLOAK_BRIDGE_CLIENT_REALM)%'
   client_id: '%env(KEYCLOAK_BRIDGE_CLIENT_ID)%'
   client_secret: '%env(KEYCLOAK_BRIDGE_CLIENT_SECRET)%'
-  http_client_service: null
+  http_client_service: 'keycloak.psr18_client'
+  request_factory_service: 'http_discovery.psr17_factory'
+  stream_factory_service: 'http_discovery.psr17_factory'
+  cache_pool: 'cache.app'
+  realm_list_ttl: 3600
+  user_entities:
+    'App\\Keycloak\\LocalUser':
+      realm: '%env(KEYCLOAK_BRIDGE_USER_REALM)%'

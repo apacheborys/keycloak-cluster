@@ -11,10 +11,10 @@
         "symfony/dotenv": "7.4.*",
         "symfony/flex": "^2.10",
         "symfony/framework-bundle": "7.4.*",
+        "symfony/http-client": "7.4.*",
         "symfony/runtime": "7.4.*",
         "symfony/yaml": "7.4.*",
-        "apacheborys/symfony-keycloak-bundle": "dev-main@dev",
-        "apacheborys/keycloak-php-client": "dev-main@dev"
+        "apacheborys/symfony-keycloak-bundle": "^0.0.1"
     },
     "require-dev": {
     },
@@ -70,18 +70,12 @@
     },
      "repositories": [
         {
-            "type": "path",
-            "url": "symfony-keycloak-bundle",
-            "options": {
-                "symlink": true
-            }
+            "type": "vcs",
+            "url": "https://github.com/apacheborys/keycloak-php-client"
         },
         {
-            "type": "path",
-            "url": "keycloak-php-client",
-            "options": {
-                "symlink": true
-            }
+            "type": "vcs",
+            "url": "https://github.com/apacheborys/symfony-keycloak-bundle"
         }
     ]
 }

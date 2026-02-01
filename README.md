@@ -23,6 +23,7 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
 - Starting with plain `start`; hostname strict modes are disabled for local convenience. Hostname is set via `KC_HOSTNAME_URL` / `KC_HOSTNAME_ADMIN_URL` for the reverse proxy on :8080.
 - Nginx uses `least_conn` balancing.
 - Nginx waits until both Keycloak nodes open port 8080 (simple `nc` wait) to avoid early 502s.
+- If you see “HTTPS required” from Keycloak when using HTTP, set Realm Settings → Require SSL to `none` (or run `kcadm.sh update realms/master -s sslRequired=none` inside a Keycloak container).
 
 ## Symfony service
 - Image built from `symfony.Dockerfile` (PHP 8.3 CLI with Composer, Symfony CLI, pdo_pgsql).

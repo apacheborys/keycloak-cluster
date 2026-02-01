@@ -21,3 +21,9 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    keycloak.psr18_client:
+        class: Symfony\Component\HttpClient\Psr18Client
+
+    Psr\Http\Client\ClientInterface:
+        alias: keycloak.psr18_client
