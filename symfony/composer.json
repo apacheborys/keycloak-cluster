@@ -12,8 +12,10 @@
         "symfony/flex": "^2.10",
         "symfony/framework-bundle": "7.4.*",
         "symfony/http-client": "7.4.*",
+        "nyholm/psr7": "^1.8.2",
         "symfony/runtime": "7.4.*",
         "symfony/yaml": "7.4.*",
+        "symfony/monolog-bundle": "^3.11.1",
         "apacheborys/symfony-keycloak-bundle": "^0.0.1"
     },
     "require-dev": {

@@ -7,6 +7,7 @@ namespace App\Command;
 use Apacheborys\KeycloakPhpClient\DTO\PasswordDto;
 use Apacheborys\KeycloakPhpClient\Service\KeycloakServiceInterface;
 use App\Keycloak\LocalUser;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -23,6 +24,7 @@ final class KeycloakCreateUserCommand extends Command
 {
     public function __construct(
         private readonly KeycloakServiceInterface $keycloakService,
+        private readonly LoggerInterface $logger,
     ) {
         parent::__construct();
     }
@@ -63,6 +65,8 @@ final class KeycloakCreateUserCommand extends Command
             );
         } catch (\Throwable $e) {
             $io->error($e->getMessage());
+            $this->logger->error($e->getMessage(), ['exception' => $e->getTraceAsString()]);
+
             return Command::FAILURE;
         }
 

@@ -4,8 +4,8 @@ keycloak_bridge:
   client_id: '%env(KEYCLOAK_BRIDGE_CLIENT_ID)%'
   client_secret: '%env(KEYCLOAK_BRIDGE_CLIENT_SECRET)%'
   http_client_service: 'keycloak.psr18_client'
-  request_factory_service: 'http_discovery.psr17_factory'
-  stream_factory_service: 'http_discovery.psr17_factory'
+  request_factory_service: 'psr17.request_factory'
+  stream_factory_service: 'psr17.stream_factory'
   cache_pool: 'cache.app'
   realm_list_ttl: 3600
   user_entities:

@@ -27,3 +27,21 @@ services:
 
     Psr\Http\Client\ClientInterface:
         alias: keycloak.psr18_client
+
+    psr17.factory:
+        class: Nyholm\Psr7\Factory\Psr17Factory
+
+    psr17.request_factory:
+        alias: psr17.factory
+
+    psr17.stream_factory:
+        alias: psr17.factory
+
+    psr17.response_factory:
+        alias: psr17.factory
+
+    psr17.server_request_factory:
+        alias: psr17.factory
+
+    psr17.uri_factory:
+        alias: psr17.factory
