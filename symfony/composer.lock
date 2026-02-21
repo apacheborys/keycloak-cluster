@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "88245229308e43dc9262e2b78b66d3b1",
+    "content-hash": "9acb4bc087009b1348742d0c7994fed6",
     "packages": [
         {
             "name": "apacheborys/keycloak-php-client",
-            "version": "0.0.2",
+            "version": "0.0.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/apacheborys/keycloak-php-client.git",
-                "reference": "0cc4f1c29c80e9e5e3212696d9982f2a1b1634ae"
+                "reference": "3f22cc75c1701ef4b32cb972308a07b215d57583"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/apacheborys/keycloak-php-client/zipball/0cc4f1c29c80e9e5e3212696d9982f2a1b1634ae",
-                "reference": "0cc4f1c29c80e9e5e3212696d9982f2a1b1634ae",
+                "url": "https://api.github.com/repos/apacheborys/keycloak-php-client/zipball/3f22cc75c1701ef4b32cb972308a07b215d57583",
+                "reference": "3f22cc75c1701ef4b32cb972308a07b215d57583",
                 "shasum": ""
             },
             "require": {
@@ -87,27 +87,27 @@
             ],
             "description": "This bundle helps to communicate your PHP application with Keycloak",
             "support": {
-                "source": "https://github.com/apacheborys/keycloak-php-client/tree/0.0.2",
+                "source": "https://github.com/apacheborys/keycloak-php-client/tree/0.0.7",
                 "issues": "https://github.com/apacheborys/keycloak-php-client/issues"
             },
-            "time": "2026-01-31T21:50:05+00:00"
+            "time": "2026-02-17T20:46:14+00:00"
         },
         {
             "name": "apacheborys/symfony-keycloak-bundle",
-            "version": "0.0.1",
+            "version": "0.0.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/apacheborys/symfony-keycloak-bundle.git",
-                "reference": "e070ccabc276ccd698a6cbfda9c396f3980e447e"
+                "reference": "fc13f02d244b73a1224dda13daf9f03bc7b072f8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/apacheborys/symfony-keycloak-bundle/zipball/e070ccabc276ccd698a6cbfda9c396f3980e447e",
-                "reference": "e070ccabc276ccd698a6cbfda9c396f3980e447e",
+                "url": "https://api.github.com/repos/apacheborys/symfony-keycloak-bundle/zipball/fc13f02d244b73a1224dda13daf9f03bc7b072f8",
+                "reference": "fc13f02d244b73a1224dda13daf9f03bc7b072f8",
                 "shasum": ""
             },
             "require": {
-                "apacheborys/keycloak-php-client": "^0.0.2",
+                "apacheborys/keycloak-php-client": "^0.0.7",
                 "php": "^8.3",
                 "symfony/config": "^7.4",
                 "symfony/dependency-injection": "^7.4",
@@ -157,10 +157,10 @@
             ],
             "description": "Symfony bundle that bridges Keycloak PHP client into Symfony applications.",
             "support": {
-                "source": "https://github.com/apacheborys/symfony-keycloak-bundle/tree/0.0.1",
+                "source": "https://github.com/apacheborys/symfony-keycloak-bundle/tree/0.0.4",
                 "issues": "https://github.com/apacheborys/symfony-keycloak-bundle/issues"
             },
-            "time": "2026-02-01T16:08:18+00:00"
+            "time": "2026-02-21T11:00:04+00:00"
         },
         {
             "name": "beberlei/assert",
@@ -231,16 +231,16 @@
         },
         {
             "name": "brick/math",
-            "version": "0.14.3",
+            "version": "0.14.8",
             "source": {
                 "type": "git",
                 "url": "https://github.com/brick/math.git",
-                "reference": "6af96b11de3f7d99730c118c200418c48274edb4"
+                "reference": "63422359a44b7f06cae63c3b429b59e8efcc0629"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/brick/math/zipball/6af96b11de3f7d99730c118c200418c48274edb4",
-                "reference": "6af96b11de3f7d99730c118c200418c48274edb4",
+                "url": "https://api.github.com/repos/brick/math/zipball/63422359a44b7f06cae63c3b429b59e8efcc0629",
+                "reference": "63422359a44b7f06cae63c3b429b59e8efcc0629",
                 "shasum": ""
             },
             "require": {
@@ -279,7 +279,7 @@
             ],
             "support": {
                 "issues": "https://github.com/brick/math/issues",
-                "source": "https://github.com/brick/math/tree/0.14.3"
+                "source": "https://github.com/brick/math/tree/0.14.8"
             },
             "funding": [
                 {
@@ -287,7 +287,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-02-01T15:18:05+00:00"
+            "time": "2026-02-10T14:33:43+00:00"
         },
         {
             "name": "monolog/monolog",
