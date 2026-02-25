@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace App\Command;
 
 use Apacheborys\KeycloakPhpClient\DTO\PasswordDto;
-use Apacheborys\KeycloakPhpClient\DTO\Request\OidcTokenRequestDto;
-use Apacheborys\KeycloakPhpClient\Service\KeycloakServiceInterface;
-use Apacheborys\KeycloakPhpClient\ValueObject\OidcGrantType;
+use App\Keycloak\KeycloakFunctionalFlowService;
 use App\Keycloak\LocalUser;
-use LogicException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -18,7 +15,6 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Throwable;
 
 #[AsCommand(
@@ -28,14 +24,8 @@ use Throwable;
 final class KeycloakCreateUserWithPlainPasswordCommand extends Command
 {
     public function __construct(
-        private readonly KeycloakServiceInterface $keycloakService,
+        private readonly KeycloakFunctionalFlowService $flowService,
         private readonly LoggerInterface $logger,
-        #[Autowire('%env(KEYCLOAK_BRIDGE_CLIENT_REALM)%')]
-        private readonly string $clientRealm,
-        #[Autowire('%env(KEYCLOAK_BRIDGE_CLIENT_ID)%')]
-        private readonly string $clientId,
-        #[Autowire('%env(KEYCLOAK_BRIDGE_CLIENT_SECRET)%')]
-        private readonly string $clientSecret,
     ) {
         parent::__construct();
     }
@@ -69,67 +59,19 @@ final class KeycloakCreateUserWithPlainPasswordCommand extends Command
         );
 
         $passwordDto = new PasswordDto(plainPassword: $plainPassword);
-        $cleanupUser = null;
 
         try {
-            $io->text('Step 1/5: creating user in Keycloak');
-            $createdUser = $this->keycloakService->createUser(
+            $result = $this->flowService->runCreateLoginRefreshDelete(
                 localUser: $localUser,
                 passwordDto: $passwordDto,
+                plainPasswordForLogin: $plainPassword,
             );
-
-            $cleanupUser = new LocalUser(
-                username: $localUser->getUsername(),
-                email: $localUser->getEmail(),
-                firstName: $localUser->getFirstName(),
-                lastName: $localUser->getLastName(),
-                enabled: $localUser->isEnabled(),
-                emailVerified: $localUser->isEmailVerified(),
-                roles: $localUser->getRoles(),
-                id: $createdUser->getId(),
-            );
-
-            $io->text(sprintf('Step 2/5: user exists (id=%s)', $createdUser->getId()));
-
-            if ($createdUser->getUsername() !== $username || $createdUser->getEmail() !== $email) {
-                throw new LogicException('Created user verification failed: mismatch in username or email.');
-            }
-
-            $io->text('Step 3/5: login with plain password');
-            $loginResult = $this->keycloakService->loginUser(
-                user: $localUser,
-                plainPassword: $plainPassword,
-            );
-
-            $refreshToken = $loginResult->getRefreshToken();
-            if ($refreshToken === null || $refreshToken === '') {
-                throw new LogicException('Login succeeded, but refresh token is missing.');
-            }
-
-            $io->text('Step 4/5: refresh token');
-            $refreshResult = $this->keycloakService->refreshToken(
-                dto: new OidcTokenRequestDto(
-                    realm: $this->clientRealm,
-                    clientId: $this->clientId,
-                    clientSecret: $this->clientSecret,
-                    refreshToken: $refreshToken,
-                    grantType: OidcGrantType::REFRESH_TOKEN,
-                ),
-            );
-
-            $io->text(sprintf(
-                'Refresh succeeded (token_type=%s, expires_in=%d)',
-                $refreshResult->getTokenType(),
-                $refreshResult->getExpiresIn(),
-            ));
-
-            $io->text('Step 5/5: deleting user');
-            $this->keycloakService->deleteUser($cleanupUser);
-            $cleanupUser = null;
 
             $io->success(sprintf(
-                'Functional flow passed for "%s": create, verify, login, refresh, delete.',
-                $username
+                'Functional flow passed for "%s" (id=%s, token_expires_in=%d).',
+                $username,
+                $result->getCreatedUser()->getId(),
+                $result->getRefreshResult()->getExpiresIn(),
             ));
 
             return Command::SUCCESS;
@@ -140,19 +82,6 @@ final class KeycloakCreateUserWithPlainPasswordCommand extends Command
             );
 
             $io->error($e->getMessage());
-
-            if ($cleanupUser instanceof LocalUser) {
-                try {
-                    $this->keycloakService->deleteUser($cleanupUser);
-                    $io->warning('Cleanup succeeded: created user was deleted after failure.');
-                } catch (Throwable $cleanupError) {
-                    $this->logger->error(
-                        'Keycloak user cleanup failed.',
-                        ['message' => $cleanupError->getMessage(), 'exception' => $cleanupError]
-                    );
-                    $io->warning('Cleanup failed: user might still exist in Keycloak.');
-                }
-            }
 
             return Command::FAILURE;
         }
