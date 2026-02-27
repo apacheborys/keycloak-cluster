@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use Apacheborys\KeycloakPhpClient\DTO\PasswordDto;
 use App\Keycloak\KeycloakFunctionalFlowService;
+use App\Keycloak\KeycloakPasswordDtoFactory;
 use App\Keycloak\LocalUser;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -25,6 +25,7 @@ final class KeycloakCreateUserWithPlainPasswordCommand extends Command
 {
     public function __construct(
         private readonly KeycloakFunctionalFlowService $flowService,
+        private readonly KeycloakPasswordDtoFactory $passwordDtoFactory,
         private readonly LoggerInterface $logger,
     ) {
         parent::__construct();
@@ -58,13 +59,18 @@ final class KeycloakCreateUserWithPlainPasswordCommand extends Command
             emailVerified: (bool) $input->getOption('email-verified'),
         );
 
-        $passwordDto = new PasswordDto(plainPassword: $plainPassword);
+        $passwordDto = $this->passwordDtoFactory->buildPlain($plainPassword);
+        $reportStep = static function (int $stepNumber, string $message) use ($io): void {
+            $io->writeln(sprintf('  [%d/5] %s', $stepNumber, $message));
+        };
 
         try {
+            $io->section('Functional flow (plain password)');
             $result = $this->flowService->runCreateLoginRefreshDelete(
                 localUser: $localUser,
                 passwordDto: $passwordDto,
                 plainPasswordForLogin: $plainPassword,
+                reportStep: $reportStep,
             );
 
             $io->success(sprintf(

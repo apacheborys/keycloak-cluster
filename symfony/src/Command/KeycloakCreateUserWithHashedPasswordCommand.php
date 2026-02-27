@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use Apacheborys\KeycloakPhpClient\DTO\PasswordDto;
-use Apacheborys\KeycloakPhpClient\ValueObject\HashAlgorithm;
 use App\Keycloak\KeycloakFunctionalFlowService;
+use App\Keycloak\KeycloakPasswordDtoFactory;
 use App\Keycloak\LocalUser;
-use LogicException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -27,6 +25,7 @@ final class KeycloakCreateUserWithHashedPasswordCommand extends Command
 {
     public function __construct(
         private readonly KeycloakFunctionalFlowService $flowService,
+        private readonly KeycloakPasswordDtoFactory $passwordDtoFactory,
         private readonly LoggerInterface $logger,
     ) {
         parent::__construct();
@@ -62,13 +61,18 @@ final class KeycloakCreateUserWithHashedPasswordCommand extends Command
         );
 
         try {
-            $hashAlgorithm = $this->resolveHashAlgorithm($algorithmInput);
-            $passwordDto = $this->buildHashedPasswordDto($plainPassword, $hashAlgorithm);
+            $hashAlgorithm = $this->passwordDtoFactory->resolveAlgorithm($algorithmInput);
+            $passwordDto = $this->passwordDtoFactory->buildHashed($plainPassword, $hashAlgorithm);
+            $reportStep = static function (int $stepNumber, string $message) use ($io): void {
+                $io->writeln(sprintf('  [%d/5] %s', $stepNumber, $message));
+            };
 
+            $io->section(sprintf('Functional flow (hashed: %s)', $hashAlgorithm->value));
             $result = $this->flowService->runCreateLoginRefreshDelete(
                 localUser: $localUser,
                 passwordDto: $passwordDto,
                 plainPasswordForLogin: $plainPassword,
+                reportStep: $reportStep,
             );
 
             $io->success(sprintf(
@@ -90,80 +94,5 @@ final class KeycloakCreateUserWithHashedPasswordCommand extends Command
 
             return Command::FAILURE;
         }
-    }
-
-    private function resolveHashAlgorithm(string $algorithm): HashAlgorithm
-    {
-        return match (strtolower($algorithm)) {
-            'argon', 'argon2', 'argon2id' => HashAlgorithm::ARGON,
-            'bcrypt' => HashAlgorithm::BCRYPT,
-            'md5' => HashAlgorithm::MD5,
-            default => throw new LogicException(
-                sprintf('Unsupported algorithm "%s". Use one of: argon, bcrypt, md5.', $algorithm)
-            ),
-        };
-    }
-
-    private function buildHashedPasswordDto(string $plainPassword, HashAlgorithm $algorithm): PasswordDto
-    {
-        return match ($algorithm) {
-            HashAlgorithm::MD5 => $this->buildMd5PasswordDto($plainPassword),
-            HashAlgorithm::BCRYPT => $this->buildBcryptPasswordDto($plainPassword),
-            HashAlgorithm::ARGON => $this->buildArgonPasswordDto($plainPassword),
-        };
-    }
-
-    private function buildMd5PasswordDto(string $plainPassword): PasswordDto
-    {
-        return new PasswordDto(
-            hashedPassword: md5($plainPassword),
-            hashAlgorithm: HashAlgorithm::MD5,
-        );
-    }
-
-    private function buildBcryptPasswordDto(string $plainPassword): PasswordDto
-    {
-        $cost = 13;
-        $hash = password_hash($plainPassword, PASSWORD_BCRYPT, ['cost' => $cost]);
-
-        if ($hash === false) {
-            throw new LogicException('Failed to generate bcrypt hash.');
-        }
-
-        return new PasswordDto(
-            hashedPassword: $hash,
-            hashAlgorithm: HashAlgorithm::BCRYPT,
-            hashIterations: $cost,
-            hashSalt: '',
-        );
-    }
-
-    private function buildArgonPasswordDto(string $plainPassword): PasswordDto
-    {
-        if (!defined('PASSWORD_ARGON2ID')) {
-            throw new LogicException('Argon2id is not available in this PHP build.');
-        }
-
-        $timeCost = PASSWORD_ARGON2_DEFAULT_TIME_COST;
-        $hash = password_hash(
-            $plainPassword,
-            PASSWORD_ARGON2ID,
-            [
-                'time_cost' => $timeCost,
-                'memory_cost' => PASSWORD_ARGON2_DEFAULT_MEMORY_COST,
-                'threads' => PASSWORD_ARGON2_DEFAULT_THREADS,
-            ]
-        );
-
-        if ($hash === false) {
-            throw new LogicException('Failed to generate argon hash.');
-        }
-
-        return new PasswordDto(
-            hashedPassword: $hash,
-            hashAlgorithm: HashAlgorithm::ARGON,
-            hashIterations: $timeCost,
-            hashSalt: '',
-        );
     }
 }

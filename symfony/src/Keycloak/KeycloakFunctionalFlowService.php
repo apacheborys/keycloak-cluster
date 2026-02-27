@@ -30,10 +30,12 @@ final readonly class KeycloakFunctionalFlowService
         LocalUser $localUser,
         PasswordDto $passwordDto,
         string $plainPasswordForLogin,
+        ?callable $reportStep = null,
     ): KeycloakFunctionalFlowResult {
         $cleanupUser = null;
 
         try {
+            $this->report($reportStep, 1, 'Create user');
             $createdUser = $this->keycloakService->createUser(
                 localUser: $localUser,
                 passwordDto: $passwordDto,
@@ -44,12 +46,14 @@ final readonly class KeycloakFunctionalFlowService
                 keycloakUserId: $createdUser->getId(),
             );
 
+            $this->report($reportStep, 2, sprintf('Verify created user (id=%s)', $createdUser->getId()));
             $this->verifyCreatedUser(
                 localUser: $localUser,
                 keycloakUsername: $createdUser->getUsername(),
                 keycloakEmail: $createdUser->getEmail(),
             );
 
+            $this->report($reportStep, 3, 'Login with provided plain password');
             $loginResult = $this->keycloakService->loginUser(
                 user: $localUser,
                 plainPassword: $plainPasswordForLogin,
@@ -60,6 +64,7 @@ final readonly class KeycloakFunctionalFlowService
                 throw new LogicException('Login succeeded, but refresh token is missing.');
             }
 
+            $this->report($reportStep, 4, 'Refresh token');
             $refreshResult = $this->keycloakService->refreshToken(
                 dto: new OidcTokenRequestDto(
                     realm: $this->clientRealm,
@@ -70,6 +75,7 @@ final readonly class KeycloakFunctionalFlowService
                 ),
             );
 
+            $this->report($reportStep, 5, 'Delete user');
             $this->keycloakService->deleteUser($cleanupUser);
 
             return new KeycloakFunctionalFlowResult(
@@ -80,6 +86,7 @@ final readonly class KeycloakFunctionalFlowService
         } catch (Throwable $e) {
             if ($cleanupUser instanceof LocalUser) {
                 try {
+                    $this->report($reportStep, 5, 'Cleanup: delete user after failure');
                     $this->keycloakService->deleteUser($cleanupUser);
                 } catch (Throwable $cleanupError) {
                     throw new RuntimeException(
@@ -94,6 +101,13 @@ final readonly class KeycloakFunctionalFlowService
             }
 
             throw $e;
+        }
+    }
+
+    private function report(?callable $reportStep, int $stepNumber, string $message): void
+    {
+        if ($reportStep !== null) {
+            $reportStep($stepNumber, $message);
         }
     }
 

@@ -7,7 +7,7 @@
         "php": ">=8.2",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "apacheborys/symfony-keycloak-bundle": "0.0.4",
+        "apacheborys/symfony-keycloak-bundle": "0.0.5",
         "nyholm/psr7": "^1.8.2",
         "symfony/console": "7.4.*",
         "symfony/dotenv": "7.4.*",
@@ -52,6 +52,7 @@
             "cache:clear": "symfony-cmd",
             "assets:install %PUBLIC_DIR%": "symfony-cmd"
         },
+        "keycloak:functional-suite": "XDEBUG_MODE=off php bin/console keycloak:functional-suite",
         "post-install-cmd": [
             "@auto-scripts"
         ],

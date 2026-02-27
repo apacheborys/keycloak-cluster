@@ -59,3 +59,12 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
     ]
   }
   ```
+
+## Keycloak functional checks
+- Plain password flow:
+  - `docker compose exec symfony php bin/console keycloak:create-user-with-plain-password username email@example.com StrongPass123 --first-name=John --last-name=Doe --email-verified`
+- Hashed password flow:
+  - `docker compose exec symfony php bin/console keycloak:create-user-with-hashed-password username email@example.com StrongPass123 argon --first-name=John --last-name=Doe --email-verified`
+  - Supported algorithms: `argon`, `bcrypt`, `md5`.
+- Full suite (plain + all hashed algorithms) with step-by-step output:
+  - `docker compose exec symfony composer run keycloak:functional-suite`
