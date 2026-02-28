@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use Apacheborys\KeycloakPhpClient\DTO\PasswordDto;
-use Apacheborys\KeycloakPhpClient\Service\KeycloakServiceInterface;
+use App\Keycloak\KeycloakFunctionalFlowService;
+use App\Keycloak\KeycloakPasswordDtoFactory;
 use App\Keycloak\LocalUser;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -15,15 +15,17 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Throwable;
 
 #[AsCommand(
-    name: 'keycloak:create-user',
-    description: 'Create a Keycloak user with a plain password'
+    name: 'keycloak:create-user-with-plain-password',
+    description: 'Run functional flow: create user, login, refresh token, delete user'
 )]
-final class KeycloakCreateUserCommand extends Command
+final class KeycloakCreateUserWithPlainPasswordCommand extends Command
 {
     public function __construct(
-        private readonly KeycloakServiceInterface $keycloakService,
+        private readonly KeycloakFunctionalFlowService $flowService,
+        private readonly KeycloakPasswordDtoFactory $passwordDtoFactory,
         private readonly LoggerInterface $logger,
     ) {
         parent::__construct();
@@ -44,34 +46,50 @@ final class KeycloakCreateUserCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        $username = (string) $input->getArgument('username');
+        $email = (string) $input->getArgument('email');
+        $plainPassword = (string) $input->getArgument('password');
 
-        $user = new LocalUser(
-            username: (string) $input->getArgument('username'),
-            email: (string) $input->getArgument('email'),
+        $localUser = new LocalUser(
+            username: $username,
+            email: $email,
             firstName: (string) $input->getOption('first-name'),
             lastName: (string) $input->getOption('last-name'),
             enabled: !$input->getOption('disabled'),
             emailVerified: (bool) $input->getOption('email-verified'),
         );
 
-        $passwordDto = new PasswordDto(
-            plainPassword: (string) $input->getArgument('password'),
-        );
+        $passwordDto = $this->passwordDtoFactory->buildPlain($plainPassword);
+        $reportStep = static function (int $stepNumber, string $message) use ($io): void {
+            $io->writeln(sprintf('  [%d/5] %s', $stepNumber, $message));
+        };
 
         try {
-            $created = $this->keycloakService->createUser(
-                localUser: $user,
+            $io->section('Functional flow (plain password)');
+            $result = $this->flowService->runCreateLoginRefreshDelete(
+                localUser: $localUser,
                 passwordDto: $passwordDto,
+                plainPasswordForLogin: $plainPassword,
+                reportStep: $reportStep,
             );
-        } catch (\Throwable $e) {
+
+            $io->success(sprintf(
+                'Functional flow passed for "%s" (id=%s, token_expires_in=%d).',
+                $username,
+                $result->getCreatedUser()->getId(),
+                $result->getRefreshResult()->getExpiresIn(),
+            ));
+
+            return Command::SUCCESS;
+        } catch (Throwable $e) {
+            $this->logger->error(
+                'Keycloak functional command failed.',
+                ['message' => $e->getMessage(), 'exception' => $e]
+            );
+
             $io->error($e->getMessage());
-            $this->logger->error($e->getMessage(), ['exception' => $e->getTraceAsString()]);
 
             return Command::FAILURE;
         }
-
-        $io->success(sprintf('Created Keycloak user: %s (%s)', $created->getUsername(), $created->getId()));
-
-        return Command::SUCCESS;
     }
 }
