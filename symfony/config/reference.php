@@ -369,7 +369,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         }>,
  *     },
  *     property_access?: bool|array{ // Property access configuration
- *         enabled?: bool|Param, // Default: false
+ *         enabled?: bool|Param, // Default: true
  *         magic_call?: bool|Param, // Default: false
  *         magic_get?: bool|Param, // Default: true
  *         magic_set?: bool|Param, // Default: true
@@ -377,11 +377,11 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         throw_exception_on_invalid_property_path?: bool|Param, // Default: true
  *     },
  *     type_info?: bool|array{ // Type info configuration
- *         enabled?: bool|Param, // Default: false
+ *         enabled?: bool|Param, // Default: true
  *         aliases?: array<string, scalar|Param|null>,
  *     },
  *     property_info?: bool|array{ // Property info configuration
- *         enabled?: bool|Param, // Default: false
+ *         enabled?: bool|Param, // Default: true
  *         with_constructor_extractor?: bool|Param, // Registers the constructor extractor.
  *     },
  *     cache?: array{ // Cache configuration
@@ -699,9 +699,14 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     request_factory_service?: scalar|Param|null, // Default: null
  *     stream_factory_service?: scalar|Param|null, // Default: null
  *     cache_pool?: scalar|Param|null, // Default: null
+ *     logger_service?: scalar|Param|null, // Default: null
+ *     allow_role_creation?: bool|Param, // Default: false
  *     realm_list_ttl?: int|Param, // Default: 3600
  *     user_entities?: array<string, array{ // Default: []
  *         realm?: scalar|Param|null,
+ *         role_prefix?: scalar|Param|null, // Default: ""
+ *         role_suffix?: scalar|Param|null, // Default: ""
+ *         mapper?: scalar|Param|null, // Default: "Apacheborys\\SymfonyKeycloakBridgeBundle\\Mapper\\LocalEntityMapper"
  *     }>,
  * }
  * @psalm-type MonologConfig = array{

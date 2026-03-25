@@ -38,8 +38,8 @@ final class KeycloakCreateUserWithHashedPasswordCommand extends Command
             ->addArgument('email', InputArgument::REQUIRED, 'Email')
             ->addArgument('password', InputArgument::REQUIRED, 'Plain password (used to build hash and for login)')
             ->addArgument('algorithm', InputArgument::REQUIRED, 'Hash algorithm: argon, bcrypt, md5')
-            ->addOption('first-name', null, InputOption::VALUE_OPTIONAL, 'First name', '')
-            ->addOption('last-name', null, InputOption::VALUE_OPTIONAL, 'Last name', '')
+            ->addOption('first-name', null, InputOption::VALUE_OPTIONAL, 'First name', 'Test')
+            ->addOption('last-name', null, InputOption::VALUE_OPTIONAL, 'Last name', 'User')
             ->addOption('email-verified', null, InputOption::VALUE_NONE, 'Mark email as verified')
             ->addOption('disabled', null, InputOption::VALUE_NONE, 'Create user disabled');
     }
@@ -50,12 +50,21 @@ final class KeycloakCreateUserWithHashedPasswordCommand extends Command
         $username = (string) $input->getArgument('username');
         $plainPassword = (string) $input->getArgument('password');
         $algorithmInput = (string) $input->getArgument('algorithm');
+        $firstName = trim((string) $input->getOption('first-name'));
+        if ($firstName === '') {
+            $firstName = 'Test';
+        }
+
+        $lastName = trim((string) $input->getOption('last-name'));
+        if ($lastName === '') {
+            $lastName = 'User';
+        }
 
         $localUser = new LocalUser(
             username: $username,
             email: (string) $input->getArgument('email'),
-            firstName: (string) $input->getOption('first-name'),
-            lastName: (string) $input->getOption('last-name'),
+            firstName: $firstName,
+            lastName: $lastName,
             enabled: !$input->getOption('disabled'),
             emailVerified: (bool) $input->getOption('email-verified'),
         );

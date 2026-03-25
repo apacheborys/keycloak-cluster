@@ -7,7 +7,12 @@ keycloak_bridge:
   request_factory_service: 'psr17.request_factory'
   stream_factory_service: 'psr17.stream_factory'
   cache_pool: 'cache.app'
+  logger_service: 'logger'
+  allow_role_creation: true
   realm_list_ttl: 3600
   user_entities:
     'App\\Keycloak\\LocalUser':
       realm: '%env(KEYCLOAK_BRIDGE_USER_REALM)%'
+    'App\\Keycloak\\FixtureUser':
+      realm: '%env(KEYCLOAK_BRIDGE_MAPPER_REALM)%'
+      mapper: 'App\\Keycloak\\Mapper\\FixtureUserMapper'

@@ -32,6 +32,7 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
 - Auto-bootstrap on container start:
   - If `composer.json` is missing in `./symfony`, a Symfony skeleton is created.
   - If `vendor/` is missing, `composer install` runs.
+  - A local proxy `127.0.0.1:8080 -> host.docker.internal:8080` can be started (controlled by `KEYCLOAK_LOCALHOST_PROXY*` env vars) so JWT verification works when Keycloak publishes `localhost:8080` in OIDC metadata.
   - PHP built-in server starts in foreground on `0.0.0.0:8000` with docroot `public/`.
 - Local bundle development:
   - `BUNDLE_PATH` -> mounts `symfony-keycloak-bundle` into `/app/symfony-keycloak-bundle` (Composer path repo).
@@ -68,3 +69,44 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
   - Supported algorithms: `argon`, `bcrypt`, `md5`.
 - Full suite (plain + all hashed algorithms) with step-by-step output:
   - `docker compose exec symfony composer run keycloak:functional-suite`
+
+## Advanced Keycloak flows (new)
+- Role management flow (create user with initial roles -> update roles -> verify in JWT -> cleanup):
+  - `docker compose exec symfony composer run keycloak:role-flow`
+- JWT authorization flow (create/login/verify/refresh + cleanup):
+  - `docker compose exec symfony composer run keycloak:jwt-flow`
+- Custom mapper flow (separate user entity mapper + JWT flow + cleanup):
+  - `docker compose exec symfony composer run keycloak:mapper-flow`
+- Run all advanced flows:
+  - `docker compose exec symfony composer run keycloak:advanced-suite`
+
+By default, flows clean up both:
+- Keycloak resources (users, and temporary role when created by role flow)
+- Symfony fixture data in PostgreSQL (`keycloak_flow_fixture_users`)
+
+To keep data for debugging, pass `--no-cleanup` to a command.
+
+## JWT debug endpoints (Symfony HTTP)
+- Verify token:
+  - `POST http://localhost:8000/api/keycloak/verify`
+  - Bearer token in `Authorization` header, or JSON body: `{\"token\":\"...\"}`
+- Introspect authenticated token payload:
+  - `GET http://localhost:8000/api/keycloak/me`
+  - Requires `Authorization: Bearer <token>`
+
+## Extra mapper env vars
+Set these in `.env`:
+- `KEYCLOAK_BRIDGE_MAPPER_REALM`
+- `KEYCLOAK_BRIDGE_MAPPER_CLIENT_ID`
+- `KEYCLOAK_BRIDGE_MAPPER_CLIENT_SECRET`
+- `KEYCLOAK_BRIDGE_MAPPER_SCOPE`
+- `KEYCLOAK_BRIDGE_MAPPER_ROLE_PREFIX`
+- `KEYCLOAK_BRIDGE_MAPPER_ROLE_SUFFIX`
+
+Recommended for custom mapper flow:
+- include `roles` in `KEYCLOAK_BRIDGE_MAPPER_SCOPE` (for example: `openid profile email roles`)
+
+Optional JWT/localhost proxy vars for Symfony container:
+- `KEYCLOAK_LOCALHOST_PROXY`
+- `KEYCLOAK_LOCALHOST_PROXY_PORT`
+- `KEYCLOAK_LOCALHOST_PROXY_TARGET`
