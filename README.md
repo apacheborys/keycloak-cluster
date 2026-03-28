@@ -34,6 +34,9 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
   - If `vendor/` is missing, `composer install` runs.
   - A local proxy `127.0.0.1:8080 -> host.docker.internal:8080` can be started (controlled by `KEYCLOAK_LOCALHOST_PROXY*` env vars) so JWT verification works when Keycloak publishes `localhost:8080` in OIDC metadata.
   - PHP built-in server starts in foreground on `0.0.0.0:8000` with docroot `public/`.
+- Doctrine:
+  - Fixture storage now uses ORM (`Entity + Repository`) with migrations.
+  - Run once after dependency updates: `docker compose exec symfony php bin/console doctrine:migrations:migrate --no-interaction`
 - Local bundle development:
   - `BUNDLE_PATH` -> mounts `symfony-keycloak-bundle` into `/app/symfony-keycloak-bundle` (Composer path repo).
   - `CLIENT_PATH` -> mounts `keycloak-php-client` into `/app/keycloak-php-client` (Composer path repo).
