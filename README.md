@@ -2,17 +2,29 @@
 
 Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an external directory for extensions.
 
+## Repository purpose
+- This repository is intentionally built as a demonstration environment for:
+  - `apacheborys/keycloak-php-client`
+  - `apacheborys/symfony-keycloak-bundle`
+- It provides a reproducible local setup to validate real Keycloak integration flows (user management, role management, JWT auth, custom mapper behavior).
+
 ## How to run
 - Requirements: Docker + Docker Compose.
 - Copy `.env.example` to `.env` and adjust credentials if needed.
 - Start: `docker compose up -d`.
 - Stop: `docker compose down`.
+- Fresh clone smoke test (single command):
+  - `docker compose exec symfony sh -lc 'php bin/console doctrine:migrations:migrate --no-interaction && composer run keycloak:advanced-suite'`
 
 ## Access
 - Admin: `admin` / `admin` (set via `KC_BOOTSTRAP_ADMIN_*` in `.env`).
 - Nginx load balancer: http://localhost:8080 (routes to both nodes)
 - Direct access (if needed): http://localhost:8081, http://localhost:8082
-- Symfony app (once you start a server inside the container): http://localhost:8000
+- Symfony app: http://localhost:8000
+- PostgreSQL (external): `localhost:5433` (maps to container port `5432`)
+- Local SQL client examples:
+  - Keycloak DB: `postgresql://keycloak:keycloak@localhost:5433/keycloak`
+  - Symfony DB: `postgresql://symfony:symfony@localhost:5433/symfony`
 
 ## Extensions
 - Place your JARs/extension folders into `extensions/` (mounted to `/opt/keycloak/providers` on both nodes).
@@ -40,6 +52,26 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
 - Local bundle development:
   - `BUNDLE_PATH` -> mounts `symfony-keycloak-bundle` into `/app/symfony-keycloak-bundle` (Composer path repo).
   - `CLIENT_PATH` -> mounts `keycloak-php-client` into `/app/keycloak-php-client` (Composer path repo).
+
+## Non-obvious implementation details
+- Why `socat` is installed in `symfony.Dockerfile`:
+  - Keycloak metadata may publish `issuer` / `jwks_uri` as `http://localhost:8080/...`.
+  - Inside a container, `localhost` points to the container itself, not your host.
+  - `symfony-entrypoint.sh` starts a local TCP proxy `127.0.0.1:8080 -> host.docker.internal:8080` (controlled by `KEYCLOAK_LOCALHOST_PROXY*`) so JWT verification works consistently.
+  - To disable it, set `KEYCLOAK_LOCALHOST_PROXY=0`.
+- Why Nginx startup uses `nc` wait:
+  - Keycloak nodes take time to bootstrap on first run.
+  - Waiting for both node ports reduces initial `502 Bad Gateway` responses.
+- Why Keycloak clustering uses `TCPPING`:
+  - This local setup prefers explicit static node discovery (`keycloak-1`, `keycloak-2`) on the Docker network.
+  - It avoids external discovery dependencies and is deterministic for local development.
+- Why `postgres-init/02-symfony-db.sh` might not run again:
+  - Docker entrypoint init scripts run only when the Postgres volume is initialized for the first time.
+  - If you already have an existing volume, new DB/user env changes are not re-applied automatically.
+  - In that case either recreate the volume (`docker compose down -v`) or create DB/user manually.
+- Why Composer scripts set `XDEBUG_MODE=off`:
+  - Flow commands are used as integration checks and should run fast/noiselessly.
+  - This suppresses repetitive Xdebug connection warnings when no IDE listener is active.
 
 ## Xdebug (VS Code)
 - Rebuild and restart the Symfony container after changes:
