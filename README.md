@@ -36,7 +36,7 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
   - PHP built-in server starts in foreground on `0.0.0.0:8000` with docroot `public/`.
 - Doctrine:
   - Fixture storage now uses ORM (`Entity + Repository`) with migrations.
-  - Run once after dependency updates: `docker compose exec symfony php bin/console doctrine:migrations:migrate --no-interaction`
+  - Run once on fresh install (or after dependency updates): `docker compose exec symfony php bin/console doctrine:migrations:migrate --no-interaction`
 - Local bundle development:
   - `BUNDLE_PATH` -> mounts `symfony-keycloak-bundle` into `/app/symfony-keycloak-bundle` (Composer path repo).
   - `CLIENT_PATH` -> mounts `keycloak-php-client` into `/app/keycloak-php-client` (Composer path repo).
@@ -80,8 +80,10 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
   - `docker compose exec symfony composer run keycloak:jwt-flow`
 - Custom mapper flow (separate user entity mapper + JWT flow + cleanup):
   - `docker compose exec symfony composer run keycloak:mapper-flow`
-- Run all advanced flows:
+- Run the full all-in-one suite (functional suite + role/jwt/mapper flows):
   - `docker compose exec symfony composer run keycloak:advanced-suite`
+- Fresh install one-liner:
+  - `docker compose exec symfony sh -lc 'php bin/console doctrine:migrations:migrate --no-interaction && composer run keycloak:advanced-suite'`
 
 By default, flows clean up both:
 - Keycloak resources (users, and temporary role when created by role flow)
