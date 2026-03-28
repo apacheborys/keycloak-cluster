@@ -1,7 +1,7 @@
 FROM php:8.4-cli
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git unzip libpq-dev netcat-openbsd $PHPIZE_DEPS \
+    && apt-get install -y --no-install-recommends git unzip libpq-dev netcat-openbsd socat $PHPIZE_DEPS \
     && docker-php-ext-install pdo pdo_pgsql \
     && pecl install xdebug \
     && docker-php-ext-enable xdebug \

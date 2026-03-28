@@ -37,8 +37,8 @@ final class KeycloakCreateUserWithPlainPasswordCommand extends Command
             ->addArgument('username', InputArgument::REQUIRED, 'Username')
             ->addArgument('email', InputArgument::REQUIRED, 'Email')
             ->addArgument('password', InputArgument::REQUIRED, 'Plain password')
-            ->addOption('first-name', null, InputOption::VALUE_OPTIONAL, 'First name', '')
-            ->addOption('last-name', null, InputOption::VALUE_OPTIONAL, 'Last name', '')
+            ->addOption('first-name', null, InputOption::VALUE_OPTIONAL, 'First name', 'Test')
+            ->addOption('last-name', null, InputOption::VALUE_OPTIONAL, 'Last name', 'User')
             ->addOption('email-verified', null, InputOption::VALUE_NONE, 'Mark email as verified')
             ->addOption('disabled', null, InputOption::VALUE_NONE, 'Create user disabled');
     }
@@ -49,12 +49,21 @@ final class KeycloakCreateUserWithPlainPasswordCommand extends Command
         $username = (string) $input->getArgument('username');
         $email = (string) $input->getArgument('email');
         $plainPassword = (string) $input->getArgument('password');
+        $firstName = trim((string) $input->getOption('first-name'));
+        if ($firstName === '') {
+            $firstName = 'Test';
+        }
+
+        $lastName = trim((string) $input->getOption('last-name'));
+        if ($lastName === '') {
+            $lastName = 'User';
+        }
 
         $localUser = new LocalUser(
             username: $username,
             email: $email,
-            firstName: (string) $input->getOption('first-name'),
-            lastName: (string) $input->getOption('last-name'),
+            firstName: $firstName,
+            lastName: $lastName,
             enabled: !$input->getOption('disabled'),
             emailVerified: (bool) $input->getOption('email-verified'),
         );
