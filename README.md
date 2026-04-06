@@ -8,6 +8,16 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
   - `apacheborys/symfony-keycloak-bundle`
 - It provides a reproducible local setup to validate real Keycloak integration flows (user management, role management, JWT auth, custom mapper behavior).
 
+## Detailed documentation
+- Full documentation index: [docs/README.md](docs/README.md)
+- Use-case guides with Mermaid sequence diagrams and code examples:
+  - [Use Case 1: Migrating Existing Symfony Users to Keycloak](docs/use-cases/01-migrating-existing-users-to-keycloak.md)
+  - [Use Case 2: Delegating Authentication and Authorization to Keycloak](docs/use-cases/02-delegating-authentication-to-keycloak.md)
+  - [Use Case 3: Local Registration with Keycloak as Source of Truth](docs/use-cases/03-local-registration-with-keycloak-source-of-truth.md)
+  - [Use Case 4: JWT Identification for Protected Symfony Resources](docs/use-cases/04-jwt-identification-and-authorization.md)
+  - [Use Case 5: Custom User Mapper for Advanced Domain Mapping](docs/use-cases/05-custom-user-mapper.md)
+  - [Use Case 6: Role Lifecycle Automation via KeycloakServiceInterface](docs/use-cases/06-role-management-lifecycle.md)
+
 ## How to run
 - Requirements: Docker + Docker Compose.
 - Copy `.env.example` to `.env` and adjust credentials if needed.
