@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Keycloak;
 
 use Apacheborys\KeycloakPhpClient\DTO\PasswordDto;
-use Apacheborys\KeycloakPhpClient\DTO\Request\OidcTokenRequestDto;
+use Apacheborys\KeycloakPhpClient\DTO\Request\Oidc\OidcTokenRequestDto;
 use Apacheborys\KeycloakPhpClient\Service\KeycloakServiceInterface;
 use Apacheborys\KeycloakPhpClient\ValueObject\OidcGrantType;
 use LogicException;
@@ -43,10 +43,10 @@ final readonly class KeycloakFunctionalFlowService
 
             $cleanupUser = $this->buildCleanupUser(
                 localUser: $localUser,
-                keycloakUserId: $createdUser->getId(),
+                keycloakUserId: $createdUser->getKeycloakId(),
             );
 
-            $this->report($reportStep, 2, sprintf('Verify created user (id=%s)', $createdUser->getId()));
+            $this->report($reportStep, 2, sprintf('Verify created user (keycloak_id=%s)', $createdUser->getKeycloakId()));
             $this->verifyCreatedUser(
                 localUser: $localUser,
                 keycloakUsername: $createdUser->getUsername(),
@@ -128,7 +128,8 @@ final readonly class KeycloakFunctionalFlowService
             enabled: $localUser->isEnabled(),
             emailVerified: $localUser->isEmailVerified(),
             roles: $localUser->getRoles(),
-            id: $keycloakUserId,
+            id: $localUser->getId(),
+            keycloakId: $keycloakUserId,
         );
     }
 }

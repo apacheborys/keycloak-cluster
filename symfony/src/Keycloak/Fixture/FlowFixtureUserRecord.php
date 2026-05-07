@@ -95,6 +95,7 @@ final readonly class FlowFixtureUserRecord
             enabled: $this->enabled,
             emailVerified: $this->emailVerified,
             roles: $this->roles,
+            id: $this->id,
         );
     }
 
@@ -108,6 +109,7 @@ final readonly class FlowFixtureUserRecord
             enabled: $this->enabled,
             emailVerified: $this->emailVerified,
             roles: $this->roles,
+            id: $this->id,
         );
     }
 }

@@ -85,10 +85,10 @@ final class KeycloakCreateUserWithHashedPasswordCommand extends Command
             );
 
             $io->success(sprintf(
-                'Functional flow passed for "%s" with "%s" (id=%s, token_expires_in=%d).',
+                'Functional flow passed for "%s" with "%s" (keycloak_id=%s, token_expires_in=%d).',
                 $username,
                 $hashAlgorithm->value,
-                $result->getCreatedUser()->getId(),
+                $result->getCreatedUser()->getKeycloakId(),
                 $result->getRefreshResult()->getExpiresIn(),
             ));
 

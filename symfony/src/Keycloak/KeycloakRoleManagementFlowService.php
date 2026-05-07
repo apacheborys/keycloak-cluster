@@ -5,16 +5,29 @@ declare(strict_types=1);
 namespace App\Keycloak;
 
 use Apacheborys\KeycloakPhpClient\DTO\PasswordDto;
+use Apacheborys\KeycloakPhpClient\DTO\RoleDto;
+use Apacheborys\KeycloakPhpClient\DTO\Request\Role\AssignUserRolesDto;
+use Apacheborys\KeycloakPhpClient\DTO\Request\Role\CreateRoleDto;
+use Apacheborys\KeycloakPhpClient\DTO\Request\Role\GetRolesDto;
+use Apacheborys\KeycloakPhpClient\DTO\Request\Role\GetUserAvailableRolesDto;
 use Apacheborys\KeycloakPhpClient\Entity\JsonWebToken;
+use Apacheborys\KeycloakPhpClient\Http\KeycloakHttpClientInterface;
 use Apacheborys\KeycloakPhpClient\Service\KeycloakServiceInterface;
 use LogicException;
+use Ramsey\Uuid\Uuid;
 use RuntimeException;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Throwable;
 
 final readonly class KeycloakRoleManagementFlowService
 {
     public function __construct(
         private KeycloakServiceInterface $keycloakService,
+        private KeycloakHttpClientInterface $httpClient,
+        #[Autowire('%env(KEYCLOAK_BRIDGE_CALLSIGN)%')]
+        private string $callsign,
+        #[Autowire('%env(KEYCLOAK_BRIDGE_USER_REALM)%')]
+        private string $userRealm,
     ) {
     }
 
@@ -51,7 +64,8 @@ final readonly class KeycloakRoleManagementFlowService
                 enabled: $localUser->isEnabled(),
                 emailVerified: $localUser->isEmailVerified(),
                 roles: $initialRoles,
-                id: $createdUser->getId(),
+                id: $localUser->getId(),
+                keycloakId: $createdUser->getKeycloakId(),
             );
 
             $newUserVersion = new LocalUser(
@@ -62,13 +76,16 @@ final readonly class KeycloakRoleManagementFlowService
                 enabled: $localUser->isEnabled(),
                 emailVerified: $localUser->isEmailVerified(),
                 roles: $normalizedUpdatedRoles,
-                id: $createdUser->getId(),
+                id: $localUser->getId(),
+                keycloakId: $createdUser->getKeycloakId(),
             );
 
-            $updatedUser = $this->keycloakService->updateUser(
-                oldUserVersion: $oldUserVersion,
-                newUserVersion: $newUserVersion,
+            $this->synchronizeRoles(
+                keycloakUserId: $createdUser->getKeycloakId(),
+                currentRoles: $initialRoles,
+                desiredRoles: $normalizedUpdatedRoles,
             );
+            $updatedUser = $this->keycloakService->findUser($newUserVersion);
 
             $this->report($reportStep, 3, 'Login user and inspect JWT roles');
             $loginResult = $this->keycloakService->loginUser(
@@ -76,16 +93,17 @@ final readonly class KeycloakRoleManagementFlowService
                 plainPassword: $plainPassword,
             );
             $jwtRoles = $this->extractRolesFromJwt($loginResult->getAccessToken());
+            $expectedUpdatedJwtRoles = $this->projectRolesForJwt($normalizedUpdatedRoles);
 
             $updatedRolesDetectedInJwt = $this->allRolesPresent(
-                expectedRoles: $normalizedUpdatedRoles,
+                expectedRoles: $expectedUpdatedJwtRoles,
                 actualRoles: $jwtRoles,
             );
             if (!$updatedRolesDetectedInJwt) {
                 throw new LogicException(
                     sprintf(
                         'Updated roles are not fully reflected in JWT. Expected: [%s], actual: [%s].',
-                        implode(', ', $normalizedUpdatedRoles),
+                        implode(', ', $expectedUpdatedJwtRoles),
                         implode(', ', $jwtRoles),
                     )
                 );
@@ -93,7 +111,7 @@ final readonly class KeycloakRoleManagementFlowService
 
             $rolesRemovedByUpdate = array_values(array_diff($initialRoles, $normalizedUpdatedRoles));
             $removedRolesAbsentInJwt = !$this->anyRolePresent(
-                expectedRoles: $rolesRemovedByUpdate,
+                expectedRoles: $this->projectRolesForJwt($rolesRemovedByUpdate),
                 actualRoles: $jwtRoles,
             );
             if (!$removedRolesAbsentInJwt) {
@@ -130,7 +148,8 @@ final readonly class KeycloakRoleManagementFlowService
                             enabled: $localUser->isEnabled(),
                             emailVerified: $localUser->isEmailVerified(),
                             roles: $normalizedUpdatedRoles,
-                            id: $createdUser->getId(),
+                            id: $localUser->getId(),
+                            keycloakId: $createdUser->getKeycloakId(),
                         )
                     );
                 }
@@ -244,10 +263,159 @@ final readonly class KeycloakRoleManagementFlowService
         return array_keys($normalized);
     }
 
+    /**
+     * @param list<string> $roles
+     * @return list<string>
+     */
+    private function projectRolesForJwt(array $roles): array
+    {
+        $projected = [];
+        $normalizedCallsign = rtrim(trim($this->callsign), '.');
+
+        foreach ($this->normalizeRoles($roles) as $role) {
+            $projected[$normalizedCallsign . '.' . $role] = true;
+        }
+
+        return array_keys($projected);
+    }
+
     private function report(?callable $reportStep, int $stepNumber, string $message): void
     {
         if ($reportStep !== null) {
             $reportStep($stepNumber, $message);
         }
+    }
+
+    /**
+     * @param list<string> $currentRoles
+     * @param list<string> $desiredRoles
+     */
+    private function synchronizeRoles(string $keycloakUserId, array $currentRoles, array $desiredRoles): void
+    {
+        $userId = Uuid::fromString($keycloakUserId);
+        $availableRoles = $this->httpClient->getRoles(
+            dto: new GetRolesDto(realm: $this->userRealm),
+        );
+
+        $projectedCurrentRoles = $this->projectRolesForJwt($currentRoles);
+        $projectedDesiredRoles = $this->projectRolesForJwt($desiredRoles);
+        $availableRoles = $this->ensureRolesExist(
+            desiredRoleNames: $projectedDesiredRoles,
+            availableRoles: $availableRoles,
+        );
+
+        $roleNamesToAssign = array_values(array_diff($projectedDesiredRoles, $projectedCurrentRoles));
+        if ($roleNamesToAssign !== []) {
+            $availableForUser = $this->httpClient->getAvailableUserRoles(
+                dto: new GetUserAvailableRolesDto(
+                    realm: $this->userRealm,
+                    userId: $userId,
+                ),
+            );
+            $rolesToAssign = $this->resolveRolesByName(
+                roleNames: $roleNamesToAssign,
+                availableRoles: $availableForUser,
+                strict: true,
+            );
+
+            if ($rolesToAssign !== []) {
+                $this->httpClient->assignRolesToUser(
+                    dto: new AssignUserRolesDto(
+                        realm: $this->userRealm,
+                        userId: $userId,
+                        roles: $rolesToAssign,
+                    ),
+                );
+            }
+        }
+
+        $roleNamesToUnassign = array_values(array_diff($projectedCurrentRoles, $projectedDesiredRoles));
+        if ($roleNamesToUnassign === []) {
+            return;
+        }
+
+        $rolesToUnassign = $this->resolveRolesByName(
+            roleNames: $roleNamesToUnassign,
+            availableRoles: $availableRoles,
+            strict: false,
+        );
+        if ($rolesToUnassign === []) {
+            return;
+        }
+
+        $this->httpClient->unassignRolesFromUser(
+            dto: new AssignUserRolesDto(
+                realm: $this->userRealm,
+                userId: $userId,
+                roles: $rolesToUnassign,
+            ),
+        );
+    }
+
+    /**
+     * @param list<string> $desiredRoleNames
+     * @param list<RoleDto> $availableRoles
+     * @return list<RoleDto>
+     */
+    private function ensureRolesExist(array $desiredRoleNames, array $availableRoles): array
+    {
+        $availableByName = [];
+        foreach ($availableRoles as $availableRole) {
+            $availableByName[$availableRole->getName()] = true;
+        }
+
+        $hasCreatedRoles = false;
+        foreach ($desiredRoleNames as $desiredRoleName) {
+            if (isset($availableByName[$desiredRoleName])) {
+                continue;
+            }
+
+            $this->httpClient->createRole(
+                dto: new CreateRoleDto(
+                    realm: $this->userRealm,
+                    role: new RoleDto(name: $desiredRoleName),
+                ),
+            );
+            $hasCreatedRoles = true;
+        }
+
+        if (!$hasCreatedRoles) {
+            return $availableRoles;
+        }
+
+        return $this->httpClient->getRoles(
+            dto: new GetRolesDto(realm: $this->userRealm),
+        );
+    }
+
+    /**
+     * @param list<string> $roleNames
+     * @param list<RoleDto> $availableRoles
+     * @return list<RoleDto>
+     */
+    private function resolveRolesByName(array $roleNames, array $availableRoles, bool $strict): array
+    {
+        $availableByName = [];
+        foreach ($availableRoles as $availableRole) {
+            $availableByName[$availableRole->getName()] = $availableRole;
+        }
+
+        $resolvedRoles = [];
+        foreach ($roleNames as $roleName) {
+            $resolvedRole = $availableByName[$roleName] ?? null;
+            if ($resolvedRole instanceof RoleDto) {
+                $resolvedRoles[] = $resolvedRole;
+                continue;
+            }
+
+            if ($strict) {
+                throw new LogicException(sprintf(
+                    'Role "%s" cannot be resolved in Keycloak available roles.',
+                    $roleName,
+                ));
+            }
+        }
+
+        return $resolvedRoles;
     }
 }

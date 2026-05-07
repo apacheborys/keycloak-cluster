@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Keycloak;
 
-use Apacheborys\KeycloakPhpClient\DTO\Response\OidcTokenResponseDto;
+use Apacheborys\KeycloakPhpClient\DTO\Response\Oidc\OidcTokenResponseDto;
 use Apacheborys\KeycloakPhpClient\Entity\KeycloakUser;
 
 final readonly class JwtAuthorizationFlowResult

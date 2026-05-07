@@ -83,9 +83,9 @@ final class KeycloakCreateUserWithPlainPasswordCommand extends Command
             );
 
             $io->success(sprintf(
-                'Functional flow passed for "%s" (id=%s, token_expires_in=%d).',
+                'Functional flow passed for "%s" (keycloak_id=%s, token_expires_in=%d).',
                 $username,
-                $result->getCreatedUser()->getId(),
+                $result->getCreatedUser()->getKeycloakId(),
                 $result->getRefreshResult()->getExpiresIn(),
             ));
 

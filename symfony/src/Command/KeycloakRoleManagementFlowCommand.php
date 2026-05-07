@@ -139,9 +139,9 @@ final class KeycloakRoleManagementFlowCommand extends Command
             );
 
             $io->success(sprintf(
-                'Role update flow passed for user "%s" (id=%s). Initial roles: [%s], updated roles: [%s].',
+                'Role update flow passed for user "%s" (keycloak_id=%s). Initial roles: [%s], updated roles: [%s].',
                 $fixture->getUsername(),
-                $result->getCreatedUser()->getId(),
+                $result->getCreatedUser()->getKeycloakId(),
                 implode(', ', $result->getInitialRoles()),
                 implode(', ', $result->getUpdatedRoles()),
             ));

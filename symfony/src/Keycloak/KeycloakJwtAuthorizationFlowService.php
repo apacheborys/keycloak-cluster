@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Keycloak;
 
 use Apacheborys\KeycloakPhpClient\DTO\PasswordDto;
-use Apacheborys\KeycloakPhpClient\DTO\Request\OidcTokenRequestDto;
+use Apacheborys\KeycloakPhpClient\DTO\Request\Oidc\OidcTokenRequestDto;
 use Apacheborys\KeycloakPhpClient\Entity\JsonWebToken;
 use Apacheborys\KeycloakPhpClient\Entity\KeycloakUser;
 use Apacheborys\KeycloakPhpClient\Entity\KeycloakUserInterface;
@@ -14,9 +14,11 @@ use Apacheborys\KeycloakPhpClient\Service\KeycloakServiceInterface;
 use Apacheborys\KeycloakPhpClient\ValueObject\KeycloakClientConfig;
 use Apacheborys\KeycloakPhpClient\ValueObject\OidcGrantType;
 use Apacheborys\SymfonyKeycloakBridgeBundle\Security\KeycloakJwtAuthenticator;
+use Apacheborys\SymfonyKeycloakBridgeBundle\Service\Internal\CallsignValuePrefixer;
 use LogicException;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Throwable;
 
@@ -27,6 +29,9 @@ final readonly class KeycloakJwtAuthorizationFlowService
         private KeycloakJwtAuthenticator $jwtAuthenticator,
         private KeycloakJwtVerificationServiceInterface $jwtVerificationService,
         private KeycloakClientConfig $keycloakClientConfig,
+        #[AutowireIterator('keycloak.user_entity_config')]
+        private iterable $userEntityConfigs,
+        private CallsignValuePrefixer $callsignValuePrefixer,
     ) {
     }
 
@@ -99,7 +104,7 @@ final readonly class KeycloakJwtAuthorizationFlowService
                 if ($createdUser instanceof KeycloakUser) {
                     $this->report($reportStep, 6, 'Cleanup: delete user');
                     $this->keycloakService->deleteUser(
-                        $this->cloneUserWithId($localUser, $createdUser->getId()),
+                        $this->cloneUserWithKeycloakId($localUser, $createdUser->getKeycloakId()),
                     );
                 }
             } catch (Throwable $cleanupException) {
@@ -167,6 +172,8 @@ final readonly class KeycloakJwtAuthorizationFlowService
         return new KeycloakJwtAuthenticator(
             jwtVerificationService: $this->jwtVerificationService,
             keycloakClientConfig: $derivedConfig,
+            userEntityConfigs: $this->userEntityConfigs,
+            callsignValuePrefixer: $this->callsignValuePrefixer,
         );
     }
 
@@ -205,7 +212,7 @@ final readonly class KeycloakJwtAuthorizationFlowService
         return $baseUrl;
     }
 
-    private function cloneUserWithId(KeycloakUserInterface $localUser, string $id): KeycloakUserInterface
+    private function cloneUserWithKeycloakId(KeycloakUserInterface $localUser, string $keycloakId): KeycloakUserInterface
     {
         if ($localUser instanceof LocalUser) {
             return new LocalUser(
@@ -216,7 +223,8 @@ final readonly class KeycloakJwtAuthorizationFlowService
                 enabled: $localUser->isEnabled(),
                 emailVerified: $localUser->isEmailVerified(),
                 roles: $localUser->getRoles(),
-                id: $id,
+                id: $localUser->getId(),
+                keycloakId: $keycloakId,
             );
         }
 
@@ -229,7 +237,8 @@ final readonly class KeycloakJwtAuthorizationFlowService
                 enabled: $localUser->isEnabled(),
                 emailVerified: $localUser->isEmailVerified(),
                 roles: $localUser->getRoles(),
-                id: $id,
+                id: $localUser->getId(),
+                keycloakId: $keycloakId,
             );
         }
 

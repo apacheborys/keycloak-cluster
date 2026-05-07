@@ -128,9 +128,9 @@ final class KeycloakJwtAuthorizationFlowCommand extends Command
             $refreshedPayload = $result->getRefreshResult()->getAccessToken()->getPayload();
 
             $io->success(sprintf(
-                'JWT flow passed for "%s" (id=%s). Access issuer=%s, refreshed issuer=%s, expires_in=%d.',
+                'JWT flow passed for "%s" (keycloak_id=%s). Access issuer=%s, refreshed issuer=%s, expires_in=%d.',
                 $fixture->getUsername(),
-                $result->getCreatedUser()->getId(),
+                $result->getCreatedUser()->getKeycloakId(),
                 $accessPayload->getIss(),
                 $refreshedPayload->getIss(),
                 $result->getRefreshResult()->getExpiresIn(),

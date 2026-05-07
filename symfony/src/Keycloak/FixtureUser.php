@@ -23,13 +23,17 @@ final class FixtureUser implements KeycloakUserInterface
         private bool $emailVerified = true,
         private array $roles = [],
         ?string $id = null,
+        ?string $keycloakId = null,
         ?DateTimeImmutable $createdAt = null,
     ) {
         $this->id = $id ?? bin2hex(random_bytes(16));
+        $this->keycloakId = $keycloakId;
         $this->createdAt = $createdAt ?? new DateTimeImmutable();
     }
 
     private string $id;
+
+    private ?string $keycloakId;
 
     private DateTimeImmutable $createdAt;
 
@@ -37,6 +41,12 @@ final class FixtureUser implements KeycloakUserInterface
     public function getId(): string
     {
         return $this->id;
+    }
+
+    #[Override]
+    public function getKeycloakId(): ?string
+    {
+        return $this->keycloakId;
     }
 
     #[Override]

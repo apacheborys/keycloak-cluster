@@ -37,6 +37,8 @@ final class KeycloakCustomMapperFlowCommand extends Command
         private readonly string $mapperClientId,
         #[Autowire('%env(KEYCLOAK_BRIDGE_MAPPER_CLIENT_SECRET)%')]
         private readonly string $mapperClientSecret,
+        #[Autowire('%env(KEYCLOAK_BRIDGE_CALLSIGN)%')]
+        private readonly string $callsign,
         #[Autowire('%env(KEYCLOAK_BRIDGE_MAPPER_ROLE_PREFIX)%')]
         private readonly string $mapperRolePrefix,
         #[Autowire('%env(KEYCLOAK_BRIDGE_MAPPER_ROLE_SUFFIX)%')]
@@ -155,8 +157,12 @@ final class KeycloakCustomMapperFlowCommand extends Command
             }
 
             $jwtRoles = $payload->getRealmAccess()['roles'];
+            $normalizedCallsign = rtrim(trim($this->callsign), '.');
             foreach ($fixture->getRoles() as $localRole) {
-                $projectedRole = $this->mapperRolePrefix . $localRole . $this->mapperRoleSuffix;
+                $projectedRole = $normalizedCallsign . '.'
+                    . $this->mapperRolePrefix
+                    . $localRole
+                    . $this->mapperRoleSuffix;
                 if (!in_array($projectedRole, $jwtRoles, true)) {
                     throw new LogicException(sprintf(
                         'Projected role "%s" was not found in JWT roles. JWT roles: [%s].',
@@ -167,9 +173,9 @@ final class KeycloakCustomMapperFlowCommand extends Command
             }
 
             $io->success(sprintf(
-                'Custom mapper flow passed for "%s" (id=%s, issuer=%s, azp=%s).',
+                'Custom mapper flow passed for "%s" (keycloak_id=%s, issuer=%s, azp=%s).',
                 $fixture->getUsername(),
-                $result->getCreatedUser()->getId(),
+                $result->getCreatedUser()->getKeycloakId(),
                 $issuer,
                 $payload->getAzp(),
             ));

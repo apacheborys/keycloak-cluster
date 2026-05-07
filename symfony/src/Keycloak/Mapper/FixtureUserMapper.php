@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Keycloak\Mapper;
 
 use Apacheborys\KeycloakPhpClient\DTO\RoleDto;
-use Apacheborys\KeycloakPhpClient\DTO\Request\CreateUserProfileDto;
-use Apacheborys\KeycloakPhpClient\DTO\Request\DeleteUserDto;
-use Apacheborys\KeycloakPhpClient\DTO\Request\OidcTokenRequestDto;
-use Apacheborys\KeycloakPhpClient\DTO\Request\UpdateUserDto;
-use Apacheborys\KeycloakPhpClient\DTO\Request\UpdateUserProfileDto;
+use Apacheborys\KeycloakPhpClient\DTO\Request\Oidc\OidcTokenRequestDto;
+use Apacheborys\KeycloakPhpClient\DTO\Request\Role\UserRolesDto;
+use Apacheborys\KeycloakPhpClient\DTO\Request\User\AttributeValueDto;
+use Apacheborys\KeycloakPhpClient\DTO\Request\User\CreateUserProfileDto;
+use Apacheborys\KeycloakPhpClient\DTO\Request\User\DeleteUserDto;
+use Apacheborys\KeycloakPhpClient\DTO\Request\User\UpdateUserDto;
+use Apacheborys\KeycloakPhpClient\DTO\Request\User\UpdateUserProfileDto;
 use Apacheborys\KeycloakPhpClient\Entity\KeycloakUserInterface;
 use Apacheborys\KeycloakPhpClient\Mapper\LocalKeycloakUserBridgeMapperInterface;
 use App\Keycloak\FixtureUser;
@@ -39,14 +41,18 @@ final readonly class FixtureUserMapper implements LocalKeycloakUserBridgeMapperI
         return $this->realm;
     }
 
-    /**
-     * @param list<RoleDto> $availableRoles
-     */
     #[Override]
-    public function prepareLocalUserForKeycloakUserCreation(
-        KeycloakUserInterface $localUser,
-        array $availableRoles
-    ): CreateUserProfileDto {
+    public function getLocalUserIdAttribute(KeycloakUserInterface $localUser): AttributeValueDto
+    {
+        return new AttributeValueDto(
+            attributeName: self::DEFAULT_LOCAL_USER_ID_ATTRIBUTE_NAME,
+            attributeValue: $localUser->getId(),
+        );
+    }
+
+    #[Override]
+    public function prepareLocalUserForKeycloakUserCreation(KeycloakUserInterface $localUser): CreateUserProfileDto
+    {
         return new CreateUserProfileDto(
             username: $localUser->getUsername(),
             email: $localUser->getEmail(),
@@ -54,6 +60,17 @@ final readonly class FixtureUserMapper implements LocalKeycloakUserBridgeMapperI
             enabled: $localUser->isEnabled(),
             firstName: $localUser->getFirstName(),
             lastName: $localUser->getLastName(),
+            realm: $this->realm,
+            attributes: [$this->getLocalUserIdAttribute($localUser)],
+        );
+    }
+
+    #[Override]
+    public function prepareLocalUserRolesForKeycloakUserCreation(
+        KeycloakUserInterface $localUser,
+        array $availableRoles
+    ): UserRolesDto {
+        return new UserRolesDto(
             realm: $this->realm,
             roles: $this->resolveRoles(
                 localRoles: $localUser->getRoles(),
@@ -81,24 +98,24 @@ final readonly class FixtureUserMapper implements LocalKeycloakUserBridgeMapperI
     #[Override]
     public function prepareLocalUserForKeycloakUserDeletion(KeycloakUserInterface $localUser): DeleteUserDto
     {
+        $keycloakId = $localUser->getKeycloakId();
+
         return new DeleteUserDto(
             realm: $this->realm,
-            userId: Uuid::fromString($localUser->getId()),
+            userId: $keycloakId !== null ? Uuid::fromString($keycloakId) : null,
+            localUserId: $localUser->getId(),
         );
     }
 
-    /**
-     * @param list<RoleDto> $availableRoles
-     */
     #[Override]
     public function prepareLocalUserDiffForKeycloakUserUpdate(
         KeycloakUserInterface $oldUserVersion,
-        KeycloakUserInterface $newUserVersion,
-        array $availableRoles
+        KeycloakUserInterface $newUserVersion
     ): UpdateUserDto {
+        $keycloakId = $newUserVersion->getKeycloakId() ?? $oldUserVersion->getKeycloakId();
+
         return new UpdateUserDto(
             realm: $this->realm,
-            userId: Uuid::fromString($newUserVersion->getId()),
             profile: new UpdateUserProfileDto(
                 username: $newUserVersion->getUsername(),
                 email: $newUserVersion->getEmail(),
@@ -106,10 +123,24 @@ final readonly class FixtureUserMapper implements LocalKeycloakUserBridgeMapperI
                 enabled: $newUserVersion->isEnabled(),
                 firstName: $newUserVersion->getFirstName(),
                 lastName: $newUserVersion->getLastName(),
-                roles: $this->resolveRoles(
-                    localRoles: $newUserVersion->getRoles(),
-                    availableRoles: $availableRoles,
-                ),
+                attributes: [$this->getLocalUserIdAttribute($newUserVersion)],
+            ),
+            userId: $keycloakId !== null ? Uuid::fromString($keycloakId) : null,
+            localUserId: $newUserVersion->getId(),
+        );
+    }
+
+    #[Override]
+    public function prepareLocalUserRolesForKeycloakUserUpdate(
+        KeycloakUserInterface $oldUserVersion,
+        KeycloakUserInterface $newUserVersion,
+        array $availableRoles
+    ): UserRolesDto {
+        return new UserRolesDto(
+            realm: $this->realm,
+            roles: $this->resolveRoles(
+                localRoles: $newUserVersion->getRoles(),
+                availableRoles: $availableRoles,
             ),
         );
     }

@@ -102,9 +102,9 @@ final class KeycloakRunFunctionalSuiteCommand extends Command
                 );
 
                 $io->success(sprintf(
-                    'Scenario "%s" passed (id=%s, expires_in=%d).',
+                    'Scenario "%s" passed (keycloak_id=%s, expires_in=%d).',
                     $label,
-                    $result->getCreatedUser()->getId(),
+                    $result->getCreatedUser()->getKeycloakId(),
                     $result->getRefreshResult()->getExpiresIn(),
                 ));
                 $passed++;
