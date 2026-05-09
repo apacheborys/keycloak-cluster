@@ -19,6 +19,7 @@
         "symfony/http-client": "7.4.*",
         "symfony/monolog-bundle": "^3.11.1",
         "symfony/runtime": "7.4.*",
+        "symfony/validator": "7.4.*",
         "symfony/yaml": "7.4.*"
     },
     "config": {

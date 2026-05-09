@@ -8,6 +8,7 @@ use Apacheborys\KeycloakPhpClient\Entity\KeycloakUserInterface;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Override;
+use Symfony\Component\Validator\Constraints as Assert;
 
 final class LocalUser implements KeycloakUserInterface
 {
@@ -15,12 +16,18 @@ final class LocalUser implements KeycloakUserInterface
      * @param string[] $roles
      */
     public function __construct(
+        #[Assert\NotBlank(message: 'Username must not be blank.')]
         private string $username,
+        #[Assert\NotBlank(message: 'Email must not be blank.')]
+        #[Assert\Email(message: 'Email must be a valid email address.')]
         private string $email,
         private string $firstName = '',
         private string $lastName = '',
         private bool $enabled = true,
         private bool $emailVerified = false,
+        #[Assert\All([
+            new Assert\NotBlank(message: 'Role names must not be blank.'),
+        ])]
         private array $roles = [],
         ?string $id = null,
         ?string $keycloakId = null,
@@ -31,6 +38,7 @@ final class LocalUser implements KeycloakUserInterface
         $this->createdAt = $createdAt ?? new DateTimeImmutable();
     }
 
+    #[Assert\NotBlank(message: 'Local user id must not be blank.')]
     private string $id;
 
     private ?string $keycloakId;

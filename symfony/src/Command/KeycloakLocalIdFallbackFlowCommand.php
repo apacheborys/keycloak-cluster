@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Keycloak\Fixture\SymfonyFixtureUserStore;
 use App\Keycloak\FixtureUser;
 use App\Keycloak\KeycloakLocalIdFallbackFlowService;
+use App\Keycloak\LocalIdFallbackFlowInput;
 use App\Keycloak\KeycloakPasswordDtoFactory;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
@@ -17,6 +18,8 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Validator\ConstraintViolationInterface;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
 use Throwable;
 
 #[AsCommand(
@@ -132,10 +135,12 @@ final class KeycloakLocalIdFallbackFlowCommand extends Command
             };
 
             $result = $this->flowService->run(
-                localUserWithoutKeycloakId: $initialUser,
-                updatedLocalUserWithoutKeycloakId: $updatedUser,
-                passwordDto: $this->passwordDtoFactory->buildPlain($fixture->getPlainPassword()),
-                plainPasswordForLogin: $fixture->getPlainPassword(),
+                input: new LocalIdFallbackFlowInput(
+                    initialUser: $initialUser,
+                    updatedUser: $updatedUser,
+                    passwordDto: $this->passwordDtoFactory->buildPlain($fixture->getPlainPassword()),
+                    plainPasswordForLogin: $fixture->getPlainPassword(),
+                ),
                 cleanup: $cleanup,
                 reportStep: $reportStep,
             );
@@ -151,6 +156,32 @@ final class KeycloakLocalIdFallbackFlowCommand extends Command
             ));
 
             return Command::SUCCESS;
+        } catch (ValidationFailedException $exception) {
+            $this->logger->error('Keycloak local-id fallback flow validation failed.', [
+                'run_id' => $runId,
+                'message' => $exception->getMessage(),
+                'violations' => array_map(
+                    static fn (ConstraintViolationInterface $violation): string => sprintf(
+                        '%s: %s',
+                        $violation->getPropertyPath(),
+                        $violation->getMessage(),
+                    ),
+                    iterator_to_array($exception->getViolations()),
+                ),
+                'exception' => $exception,
+            ]);
+
+            $io->error('Local-id fallback flow input is invalid.');
+            foreach ($exception->getViolations() as $violation) {
+                $propertyPath = $violation->getPropertyPath();
+                $io->writeln(sprintf(
+                    '  - %s%s',
+                    $propertyPath !== '' ? $propertyPath . ': ' : '',
+                    $violation->getMessage(),
+                ));
+            }
+
+            return Command::FAILURE;
         } catch (Throwable $exception) {
             $this->logger->error('Keycloak local-id fallback flow failed.', [
                 'run_id' => $runId,

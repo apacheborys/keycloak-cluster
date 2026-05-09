@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Keycloak;
 
-use Apacheborys\KeycloakPhpClient\DTO\PasswordDto;
 use Apacheborys\KeycloakPhpClient\DTO\Request\Oidc\OidcTokenRequestDto;
 use Apacheborys\KeycloakPhpClient\DTO\Request\User\SearchUsersDto;
 use Apacheborys\KeycloakPhpClient\Entity\JsonWebToken;
@@ -25,6 +24,8 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Throwable;
 
 final readonly class KeycloakLocalIdFallbackFlowService
@@ -40,6 +41,7 @@ final readonly class KeycloakLocalIdFallbackFlowService
         #[AutowireIterator('keycloak.user_entity_config')]
         private iterable $userEntityConfigs,
         private CallsignValuePrefixer $callsignValuePrefixer,
+        private ValidatorInterface $validator,
         #[Autowire('%env(KEYCLOAK_BRIDGE_MAPPER_REALM)%')]
         private string $mapperRealm,
         #[Autowire('%env(KEYCLOAK_BRIDGE_MAPPER_CLIENT_ID)%')]
@@ -50,19 +52,16 @@ final readonly class KeycloakLocalIdFallbackFlowService
     }
 
     public function run(
-        FixtureUser $localUserWithoutKeycloakId,
-        FixtureUser $updatedLocalUserWithoutKeycloakId,
-        PasswordDto $passwordDto,
-        string $plainPasswordForLogin,
+        LocalIdFallbackFlowInput $input,
         bool $cleanup = true,
         ?callable $reportStep = null,
     ): LocalIdFallbackFlowResult {
-        $this->assertFallbackUser($localUserWithoutKeycloakId, 'Initial');
-        $this->assertFallbackUser($updatedLocalUserWithoutKeycloakId, 'Updated');
+        $this->validateInput($input);
 
-        if ($localUserWithoutKeycloakId->getId() !== $updatedLocalUserWithoutKeycloakId->getId()) {
-            throw new LogicException('Fallback flow requires the same stable local id before and after update.');
-        }
+        $localUserWithoutKeycloakId = $input->getInitialUser();
+        $updatedLocalUserWithoutKeycloakId = $input->getUpdatedUser();
+        $passwordDto = $input->getPasswordDto();
+        $plainPasswordForLogin = $input->getPlainPasswordForLogin();
 
         $createdUser = null;
         $userDeleted = false;
@@ -76,7 +75,7 @@ final readonly class KeycloakLocalIdFallbackFlowService
                 passwordDto: $passwordDto,
             );
             $identifierConfig = $this->resolveIdentifierConfig(FixtureUser::class);
-            $this->assertKeycloakIdentifierAttribute(
+            $this->ensureKeycloakIdentifierAttribute(
                 keycloakUser: $createdUser,
                 attributeName: $identifierConfig->attributeName,
                 expectedLocalUserId: $localUserWithoutKeycloakId->getId(),
@@ -84,12 +83,12 @@ final readonly class KeycloakLocalIdFallbackFlowService
 
             $this->report($reportStep, 2, 'Find the same user via local-id attribute fallback');
             $foundUser = $this->keycloakService->findUser($localUserWithoutKeycloakId);
-            $this->assertSameKeycloakUser(
+            $this->ensureSameKeycloakUser(
                 expected: $createdUser,
                 actual: $foundUser,
                 operation: 'findUser',
             );
-            $this->assertKeycloakIdentifierAttribute(
+            $this->ensureKeycloakIdentifierAttribute(
                 keycloakUser: $foundUser,
                 attributeName: $identifierConfig->attributeName,
                 expectedLocalUserId: $localUserWithoutKeycloakId->getId(),
@@ -100,11 +99,11 @@ final readonly class KeycloakLocalIdFallbackFlowService
                 oldUserVersion: $localUserWithoutKeycloakId,
                 newUserVersion: $updatedLocalUserWithoutKeycloakId,
             );
-            $this->assertUpdatedUserMatches(
+            $this->ensureUpdatedUserMatches(
                 expected: $updatedLocalUserWithoutKeycloakId,
                 updatedUser: $updatedUser,
             );
-            $this->assertKeycloakIdentifierAttribute(
+            $this->ensureKeycloakIdentifierAttribute(
                 keycloakUser: $updatedUser,
                 attributeName: $identifierConfig->attributeName,
                 expectedLocalUserId: $updatedLocalUserWithoutKeycloakId->getId(),
@@ -212,14 +211,15 @@ final readonly class KeycloakLocalIdFallbackFlowService
         return $result;
     }
 
-    private function assertFallbackUser(FixtureUser $user, string $label): void
+    private function validateInput(LocalIdFallbackFlowInput $input): void
     {
-        if ($user->getKeycloakId() !== null) {
-            throw new LogicException(sprintf('%s fixture user must keep keycloakId=null for fallback testing.', $label));
+        $violations = $this->validator->validate($input);
+        if ($violations->count() > 0) {
+            throw new ValidationFailedException($input, $violations);
         }
     }
 
-    private function assertSameKeycloakUser(KeycloakUser $expected, KeycloakUser $actual, string $operation): void
+    private function ensureSameKeycloakUser(KeycloakUser $expected, KeycloakUser $actual, string $operation): void
     {
         if ($expected->getKeycloakId() !== $actual->getKeycloakId()) {
             throw new LogicException(sprintf(
@@ -231,7 +231,7 @@ final readonly class KeycloakLocalIdFallbackFlowService
         }
     }
 
-    private function assertUpdatedUserMatches(FixtureUser $expected, KeycloakUser $updatedUser): void
+    private function ensureUpdatedUserMatches(FixtureUser $expected, KeycloakUser $updatedUser): void
     {
         if ($updatedUser->getUsername() !== $expected->getUsername()) {
             throw new LogicException('Fallback update did not preserve username.');
@@ -262,7 +262,7 @@ final readonly class KeycloakLocalIdFallbackFlowService
         }
     }
 
-    private function assertKeycloakIdentifierAttribute(
+    private function ensureKeycloakIdentifierAttribute(
         KeycloakUser $keycloakUser,
         string $attributeName,
         string $expectedLocalUserId,
