@@ -4,22 +4,16 @@ declare(strict_types=1);
 
 namespace App\Keycloak;
 
-use Apacheborys\KeycloakPhpClient\DTO\PasswordDto;
 use Apacheborys\KeycloakPhpClient\DTO\Request\Oidc\OidcTokenRequestDto;
 use Apacheborys\KeycloakPhpClient\Entity\JsonWebToken;
 use Apacheborys\KeycloakPhpClient\Entity\KeycloakUser;
-use Apacheborys\KeycloakPhpClient\Entity\KeycloakUserInterface;
-use Apacheborys\KeycloakPhpClient\Service\KeycloakJwtVerificationServiceInterface;
 use Apacheborys\KeycloakPhpClient\Service\KeycloakServiceInterface;
-use Apacheborys\KeycloakPhpClient\ValueObject\KeycloakClientConfig;
 use Apacheborys\KeycloakPhpClient\ValueObject\OidcGrantType;
 use Apacheborys\SymfonyKeycloakBridgeBundle\Security\KeycloakJwtAuthenticator;
-use Apacheborys\SymfonyKeycloakBridgeBundle\Service\Internal\CallsignValuePrefixer;
 use LogicException;
 use RuntimeException;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Throwable;
@@ -29,11 +23,8 @@ final readonly class KeycloakJwtAuthorizationFlowService
     public function __construct(
         private KeycloakServiceInterface $keycloakService,
         private KeycloakJwtAuthenticator $jwtAuthenticator,
-        private KeycloakJwtVerificationServiceInterface $jwtVerificationService,
-        private KeycloakClientConfig $keycloakClientConfig,
-        #[AutowireIterator('keycloak.user_entity_config')]
-        private iterable $userEntityConfigs,
-        private CallsignValuePrefixer $callsignValuePrefixer,
+        private KeycloakJwtAuthenticatorFactory $jwtAuthenticatorFactory,
+        private KeycloakUserCloneFactory $userCloneFactory,
         private ValidatorInterface $validator,
     ) {
     }
@@ -110,7 +101,7 @@ final readonly class KeycloakJwtAuthorizationFlowService
                 if ($createdUser instanceof KeycloakUser) {
                     $this->report($reportStep, 6, 'Cleanup: delete user');
                     $this->keycloakService->deleteUser(
-                        $this->cloneUserWithKeycloakId($localUser, $createdUser->getKeycloakId()),
+                        $this->userCloneFactory->withKeycloakId($localUser, $createdUser->getKeycloakId()),
                     );
                 }
             } catch (Throwable $cleanupException) {
@@ -155,7 +146,7 @@ final readonly class KeycloakJwtAuthorizationFlowService
 
         if ($authenticator->supports($request) !== true) {
             $token = JsonWebToken::fromRawToken(rawToken: $jwt);
-            $authenticator = $this->buildAuthenticatorForIssuer($token->getPayload()->getIss());
+            $authenticator = $this->jwtAuthenticatorFactory->createForIssuer($token->getPayload()->getIss());
             $request = new Request(server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $jwt]);
 
             if ($authenticator->supports($request) !== true) {
@@ -170,96 +161,6 @@ final readonly class KeycloakJwtAuthorizationFlowService
         }
 
         return true;
-    }
-
-    private function buildAuthenticatorForIssuer(string $issuer): KeycloakJwtAuthenticator
-    {
-        $derivedBaseUrl = $this->extractBaseUrlFromIssuer($issuer);
-        $derivedConfig = new KeycloakClientConfig(
-            baseUrl: $derivedBaseUrl,
-            clientRealm: $this->keycloakClientConfig->getClientRealm(),
-            clientId: $this->keycloakClientConfig->getClientId(),
-            clientSecret: $this->keycloakClientConfig->getClientSecret(),
-            realmListTtl: $this->keycloakClientConfig->getRealmListTtl(),
-        );
-
-        return new KeycloakJwtAuthenticator(
-            jwtVerificationService: $this->jwtVerificationService,
-            keycloakClientConfig: $derivedConfig,
-            userEntityConfigs: $this->userEntityConfigs,
-            callsignValuePrefixer: $this->callsignValuePrefixer,
-        );
-    }
-
-    private function extractBaseUrlFromIssuer(string $issuer): string
-    {
-        $parts = parse_url($issuer);
-        if (!is_array($parts)) {
-            throw new LogicException(sprintf('Unable to parse issuer URL "%s".', $issuer));
-        }
-
-        $scheme = (string) ($parts['scheme'] ?? '');
-        $host = (string) ($parts['host'] ?? '');
-        if ($scheme === '' || $host === '') {
-            throw new LogicException(sprintf('Issuer URL "%s" does not contain scheme and host.', $issuer));
-        }
-
-        $port = $parts['port'] ?? null;
-        $path = (string) ($parts['path'] ?? '');
-        $realmPosition = strpos($path, '/realms/');
-        if ($realmPosition !== false) {
-            $path = substr($path, 0, $realmPosition);
-        } else {
-            $path = '';
-        }
-
-        $baseUrl = $scheme . '://' . $host;
-        if (is_int($port)) {
-            $baseUrl .= ':' . $port;
-        }
-
-        $normalizedPath = trim($path, '/');
-        if ($normalizedPath !== '') {
-            $baseUrl .= '/' . $normalizedPath;
-        }
-
-        return $baseUrl;
-    }
-
-    private function cloneUserWithKeycloakId(KeycloakUserInterface $localUser, string $keycloakId): KeycloakUserInterface
-    {
-        if ($localUser instanceof LocalUser) {
-            return new LocalUser(
-                username: $localUser->getUsername(),
-                email: $localUser->getEmail(),
-                firstName: $localUser->getFirstName(),
-                lastName: $localUser->getLastName(),
-                enabled: $localUser->isEnabled(),
-                emailVerified: $localUser->isEmailVerified(),
-                roles: $localUser->getRoles(),
-                id: $localUser->getId(),
-                keycloakId: $keycloakId,
-            );
-        }
-
-        if ($localUser instanceof FixtureUser) {
-            return new FixtureUser(
-                username: $localUser->getUsername(),
-                email: $localUser->getEmail(),
-                firstName: $localUser->getFirstName(),
-                lastName: $localUser->getLastName(),
-                enabled: $localUser->isEnabled(),
-                emailVerified: $localUser->isEmailVerified(),
-                roles: $localUser->getRoles(),
-                id: $localUser->getId(),
-                keycloakId: $keycloakId,
-            );
-        }
-
-        throw new LogicException(sprintf(
-            'Unsupported local user class "%s" for cleanup cloning.',
-            $localUser::class,
-        ));
     }
 
     private function report(?callable $reportStep, int $stepNumber, string $message): void

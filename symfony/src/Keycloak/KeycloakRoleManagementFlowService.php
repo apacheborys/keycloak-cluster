@@ -17,6 +17,8 @@ use LogicException;
 use Ramsey\Uuid\Uuid;
 use RuntimeException;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Throwable;
 
 final readonly class KeycloakRoleManagementFlowService
@@ -24,6 +26,8 @@ final readonly class KeycloakRoleManagementFlowService
     public function __construct(
         private KeycloakServiceInterface $keycloakService,
         private KeycloakHttpClientInterface $httpClient,
+        private KeycloakUserCloneFactory $userCloneFactory,
+        private ValidatorInterface $validator,
         #[Autowire('%env(KEYCLOAK_BRIDGE_CALLSIGN)%')]
         private string $callsign,
         #[Autowire('%env(KEYCLOAK_BRIDGE_USER_REALM)%')]
@@ -31,16 +35,16 @@ final readonly class KeycloakRoleManagementFlowService
     ) {
     }
 
-    /**
-     * @param list<string> $updatedRoles
-     */
     public function run(
-        LocalUser $localUser,
-        string $plainPassword,
-        array $updatedRoles,
+        RoleManagementFlowInput $input,
         bool $cleanup = true,
         ?callable $reportStep = null,
     ): RoleManagementFlowResult {
+        $this->validateInput($input);
+
+        $localUser = $input->getLocalUser();
+        $plainPassword = $input->getPlainPassword();
+        $updatedRoles = $input->getUpdatedRoles();
         $createdUser = null;
         $flowError = null;
         $result = null;
@@ -56,28 +60,10 @@ final readonly class KeycloakRoleManagementFlowService
             );
 
             $this->report($reportStep, 2, 'Update user roles through KeycloakServiceInterface');
-            $oldUserVersion = new LocalUser(
-                username: $localUser->getUsername(),
-                email: $localUser->getEmail(),
-                firstName: $localUser->getFirstName(),
-                lastName: $localUser->getLastName(),
-                enabled: $localUser->isEnabled(),
-                emailVerified: $localUser->isEmailVerified(),
-                roles: $initialRoles,
-                id: $localUser->getId(),
+            $newUserVersion = $this->userCloneFactory->withKeycloakId(
+                localUser: $localUser,
                 keycloakId: $createdUser->getKeycloakId(),
-            );
-
-            $newUserVersion = new LocalUser(
-                username: $localUser->getUsername(),
-                email: $localUser->getEmail(),
-                firstName: $localUser->getFirstName(),
-                lastName: $localUser->getLastName(),
-                enabled: $localUser->isEnabled(),
-                emailVerified: $localUser->isEmailVerified(),
                 roles: $normalizedUpdatedRoles,
-                id: $localUser->getId(),
-                keycloakId: $createdUser->getKeycloakId(),
             );
 
             $this->synchronizeRoles(
@@ -140,17 +126,11 @@ final readonly class KeycloakRoleManagementFlowService
                 if ($createdUser !== null) {
                     $this->report($reportStep, 4, 'Cleanup: delete user');
                     $this->keycloakService->deleteUser(
-                        new LocalUser(
-                            username: $localUser->getUsername(),
-                            email: $localUser->getEmail(),
-                            firstName: $localUser->getFirstName(),
-                            lastName: $localUser->getLastName(),
-                            enabled: $localUser->isEnabled(),
-                            emailVerified: $localUser->isEmailVerified(),
-                            roles: $normalizedUpdatedRoles,
-                            id: $localUser->getId(),
+                        $this->userCloneFactory->withKeycloakId(
+                            localUser: $localUser,
                             keycloakId: $createdUser->getKeycloakId(),
-                        )
+                            roles: $normalizedUpdatedRoles,
+                        ),
                     );
                 }
             } catch (Throwable $cleanupException) {
@@ -178,6 +158,14 @@ final readonly class KeycloakRoleManagementFlowService
         }
 
         return $result;
+    }
+
+    private function validateInput(RoleManagementFlowInput $input): void
+    {
+        $violations = $this->validator->validate($input);
+        if ($violations->count() > 0) {
+            throw new ValidationFailedException($input, $violations);
+        }
     }
 
     /**

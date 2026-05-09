@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Keycloak;
 
-use Apacheborys\KeycloakPhpClient\DTO\PasswordDto;
 use Apacheborys\KeycloakPhpClient\DTO\Request\Oidc\OidcTokenRequestDto;
 use Apacheborys\KeycloakPhpClient\Service\KeycloakServiceInterface;
 use Apacheborys\KeycloakPhpClient\ValueObject\OidcGrantType;
+use Apacheborys\KeycloakPhpClient\Entity\KeycloakUserInterface;
 use LogicException;
 use RuntimeException;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -19,6 +19,7 @@ final readonly class KeycloakFunctionalFlowService
 {
     public function __construct(
         private KeycloakServiceInterface $keycloakService,
+        private KeycloakUserCloneFactory $userCloneFactory,
         private ValidatorInterface $validator,
         #[Autowire('%env(KEYCLOAK_BRIDGE_CLIENT_REALM)%')]
         private string $clientRealm,
@@ -90,7 +91,7 @@ final readonly class KeycloakFunctionalFlowService
                 refreshResult: $refreshResult,
             );
         } catch (Throwable $e) {
-            if ($cleanupUser instanceof LocalUser) {
+            if ($cleanupUser instanceof KeycloakUserInterface) {
                 try {
                     $this->report($reportStep, 5, 'Cleanup: delete user after failure');
                     $this->keycloakService->deleteUser($cleanupUser);
@@ -132,17 +133,10 @@ final readonly class KeycloakFunctionalFlowService
         }
     }
 
-    private function buildCleanupUser(LocalUser $localUser, string $keycloakUserId): LocalUser
+    private function buildCleanupUser(LocalUser $localUser, string $keycloakUserId): KeycloakUserInterface
     {
-        return new LocalUser(
-            username: $localUser->getUsername(),
-            email: $localUser->getEmail(),
-            firstName: $localUser->getFirstName(),
-            lastName: $localUser->getLastName(),
-            enabled: $localUser->isEnabled(),
-            emailVerified: $localUser->isEmailVerified(),
-            roles: $localUser->getRoles(),
-            id: $localUser->getId(),
+        return $this->userCloneFactory->withKeycloakId(
+            localUser: $localUser,
             keycloakId: $keycloakUserId,
         );
     }

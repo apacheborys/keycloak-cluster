@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Keycloak\Fixture\SymfonyFixtureUserStore;
 use App\Keycloak\KeycloakRoleManagementFlowService;
+use App\Keycloak\RoleManagementFlowInput;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -15,6 +16,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
 use Throwable;
 
 #[AsCommand(
@@ -23,6 +25,8 @@ use Throwable;
 )]
 final class KeycloakRoleManagementFlowCommand extends Command
 {
+    use RendersValidationFailures;
+
     public function __construct(
         private readonly KeycloakRoleManagementFlowService $flowService,
         private readonly SymfonyFixtureUserStore $fixtureStore,
@@ -131,9 +135,11 @@ final class KeycloakRoleManagementFlowCommand extends Command
             };
 
             $result = $this->flowService->run(
-                localUser: $fixture->toLocalUser(),
-                plainPassword: $fixture->getPlainPassword(),
-                updatedRoles: $updatedRoles,
+                input: new RoleManagementFlowInput(
+                    localUser: $fixture->toLocalUser(),
+                    plainPassword: $fixture->getPlainPassword(),
+                    updatedRoles: $updatedRoles,
+                ),
                 cleanup: $cleanup,
                 reportStep: $reportStep,
             );
@@ -147,6 +153,17 @@ final class KeycloakRoleManagementFlowCommand extends Command
             ));
 
             return Command::SUCCESS;
+        } catch (ValidationFailedException $exception) {
+            $this->logger->error('Keycloak role-management flow validation failed.', [
+                'run_id' => $runId,
+                'message' => $exception->getMessage(),
+                'violations' => $this->formatValidationViolations($exception),
+                'exception' => $exception,
+            ]);
+
+            $this->renderValidationFailure($io, $exception, 'Role-management flow input is invalid.');
+
+            return Command::FAILURE;
         } catch (Throwable $exception) {
             $this->logger->error('Keycloak role-management flow failed.', [
                 'run_id' => $runId,

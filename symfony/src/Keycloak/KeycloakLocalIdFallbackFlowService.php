@@ -9,9 +9,7 @@ use Apacheborys\KeycloakPhpClient\DTO\Request\User\SearchUsersDto;
 use Apacheborys\KeycloakPhpClient\Entity\JsonWebToken;
 use Apacheborys\KeycloakPhpClient\Entity\JwtPayload;
 use Apacheborys\KeycloakPhpClient\Entity\KeycloakUser;
-use Apacheborys\KeycloakPhpClient\Service\KeycloakJwtVerificationServiceInterface;
 use Apacheborys\KeycloakPhpClient\Service\KeycloakServiceInterface;
-use Apacheborys\KeycloakPhpClient\ValueObject\KeycloakClientConfig;
 use Apacheborys\KeycloakPhpClient\ValueObject\OidcGrantType;
 use Apacheborys\SymfonyKeycloakBridgeBundle\Model\UserEntityConfig;
 use Apacheborys\SymfonyKeycloakBridgeBundle\Security\KeycloakJwtAuthenticator;
@@ -36,8 +34,7 @@ final readonly class KeycloakLocalIdFallbackFlowService
     public function __construct(
         private KeycloakServiceInterface $keycloakService,
         private KeycloakJwtAuthenticator $jwtAuthenticator,
-        private KeycloakJwtVerificationServiceInterface $jwtVerificationService,
-        private KeycloakClientConfig $keycloakClientConfig,
+        private KeycloakJwtAuthenticatorFactory $jwtAuthenticatorFactory,
         #[AutowireIterator('keycloak.user_entity_config')]
         private iterable $userEntityConfigs,
         private CallsignValuePrefixer $callsignValuePrefixer,
@@ -349,7 +346,7 @@ final readonly class KeycloakLocalIdFallbackFlowService
 
         if ($authenticator->supports($request) !== true) {
             $token = JsonWebToken::fromRawToken(rawToken: $jwt);
-            $authenticator = $this->buildAuthenticatorForIssuer($token->getPayload()->getIss());
+            $authenticator = $this->jwtAuthenticatorFactory->createForIssuer($token->getPayload()->getIss());
             $request = new Request(server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $jwt]);
 
             if ($authenticator->supports($request) !== true) {
@@ -394,60 +391,6 @@ final readonly class KeycloakLocalIdFallbackFlowService
         }
 
         return $resolvedUserIdentifier;
-    }
-
-    private function buildAuthenticatorForIssuer(string $issuer): KeycloakJwtAuthenticator
-    {
-        $derivedBaseUrl = $this->extractBaseUrlFromIssuer($issuer);
-        $derivedConfig = new KeycloakClientConfig(
-            baseUrl: $derivedBaseUrl,
-            clientRealm: $this->keycloakClientConfig->getClientRealm(),
-            clientId: $this->keycloakClientConfig->getClientId(),
-            clientSecret: $this->keycloakClientConfig->getClientSecret(),
-            realmListTtl: $this->keycloakClientConfig->getRealmListTtl(),
-        );
-
-        return new KeycloakJwtAuthenticator(
-            jwtVerificationService: $this->jwtVerificationService,
-            keycloakClientConfig: $derivedConfig,
-            userEntityConfigs: $this->userEntityConfigs,
-            callsignValuePrefixer: $this->callsignValuePrefixer,
-        );
-    }
-
-    private function extractBaseUrlFromIssuer(string $issuer): string
-    {
-        $parts = parse_url($issuer);
-        if (!is_array($parts)) {
-            throw new LogicException(sprintf('Unable to parse issuer URL "%s".', $issuer));
-        }
-
-        $scheme = (string) ($parts['scheme'] ?? '');
-        $host = (string) ($parts['host'] ?? '');
-        if ($scheme === '' || $host === '') {
-            throw new LogicException(sprintf('Issuer URL "%s" does not contain scheme and host.', $issuer));
-        }
-
-        $port = $parts['port'] ?? null;
-        $path = (string) ($parts['path'] ?? '');
-        $realmPosition = strpos($path, '/realms/');
-        if ($realmPosition !== false) {
-            $path = substr($path, 0, $realmPosition);
-        } else {
-            $path = '';
-        }
-
-        $baseUrl = $scheme . '://' . $host;
-        if (is_int($port)) {
-            $baseUrl .= ':' . $port;
-        }
-
-        $normalizedPath = trim($path, '/');
-        if ($normalizedPath !== '') {
-            $baseUrl .= '/' . $normalizedPath;
-        }
-
-        return $baseUrl;
     }
 
     private function verifyDeletion(FixtureUser $user): bool
