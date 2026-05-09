@@ -14,7 +14,8 @@ The goal is to show realistic integration patterns, not only isolated API calls.
 - [Use Case 3: Local Registration with Keycloak as Source of Truth](./use-cases/03-local-registration-with-keycloak-source-of-truth.md)
 - [Use Case 4: JWT Identification for Protected Symfony Resources](./use-cases/04-jwt-identification-and-authorization.md)
 - [Use Case 5: Custom User Mapper for Advanced Domain Mapping](./use-cases/05-custom-user-mapper.md)
-- [Use Case 6: Role Lifecycle Automation via `KeycloakServiceInterface`](./use-cases/06-role-management-lifecycle.md)
+- [Use Case 6: Role Lifecycle Automation and JWT Role Verification](./use-cases/06-role-management-lifecycle.md)
+- [Use Case 7: Operating Without Persisted Keycloak Id](./use-cases/07-local-id-fallback-without-persisted-keycloak-id.md)
 
 ## Quick validation commands
 
@@ -33,10 +34,18 @@ The suite validates:
 - role update flow
 - JWT verification and refresh flow
 - custom mapper flow
+- local-id fallback flow without persisted `keycloakId`
+
+## Current version notes
+
+- This repository currently targets `apacheborys/keycloak-php-client 0.0.16` and `apacheborys/symfony-keycloak-bundle 0.0.7`.
+- `getId()` is treated as the stable local identifier, while `getKeycloakId()` is the persisted external Keycloak UUID.
+- `keycloak_bridge.callsign` is mandatory and is used to namespace the local-id attribute / JWT claim seen in Keycloak.
 
 ## Design principles used in examples
 
-- Symfony app code communicates with Keycloak through `KeycloakServiceInterface` and related public service interfaces.
-- Application code does not use low-level HTTP client internals directly.
+- Symfony app code should prefer `KeycloakServiceInterface` and related public service interfaces.
+- When a library behavior gap is under validation, this demo may explicitly use other public interfaces such as `KeycloakHttpClientInterface`, but keeps that usage isolated in flow services and documents why it exists.
+- Flow inputs are validated with `symfony/validator` before any Keycloak network call.
 - Functional flows clean up test users and fixture records by default.
 - For repeatable integration tests, fixture state is persisted in PostgreSQL with Doctrine ORM and cleaned after each run.

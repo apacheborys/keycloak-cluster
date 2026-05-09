@@ -1,4 +1,4 @@
-# Use Case 6: Role Lifecycle Automation via `KeycloakServiceInterface`
+# Use Case 6: Role Lifecycle Automation and JWT Role Verification
 
 ## Why this scenario matters
 
@@ -18,13 +18,14 @@ sequenceDiagram
     participant Cmd as Symfony CLI Command
     participant Store as Fixture Store (Doctrine ORM)
     participant KS as KeycloakServiceInterface
+    participant HTTP as KeycloakHttpClientInterface
     participant KC as Keycloak
 
     Cmd->>Store: Persist fixture user record
     Cmd->>KS: createUser(initial roles)
     KS->>KC: Create user + assign initial roles
-    Cmd->>KS: updateUser(oldUserVersion, newUserVersion)
-    KS->>KC: Reconcile role set
+    Cmd->>HTTP: assign/unassign projected roles
+    HTTP->>KC: Reconcile role set explicitly
     Cmd->>KS: loginUser(newUserVersion, plainPassword)
     KS->>KC: OIDC token request
     KC-->>Cmd: Access token with updated roles
@@ -38,15 +39,21 @@ sequenceDiagram
 ```php
 $created = $keycloakService->createUser($localUser, new PasswordDto(plainPassword: $password));
 
-$updated = $keycloakService->updateUser(
-    oldUserVersion: $oldUser,
-    newUserVersion: $newUser,
-);
-
 $login = $keycloakService->loginUser($newUser, $password);
 
 $keycloakService->deleteUser($userWithIdForCleanup);
 ```
+
+## Repository note for current library versions
+
+In this repository the role-management flow intentionally uses the public `KeycloakHttpClientInterface` for explicit role assign/unassign after user creation.
+
+Why:
+
+- the scenario being validated is not only role assignment, but also reliable removal of previously assigned roles
+- for current library versions, this explicit reconciliation path is the most predictable way to verify that JWT role projection changes as expected
+
+This keeps the demo honest: it documents the current working integration shape instead of pretending that everything is already covered by one higher-level convenience call.
 
 ## Example: role update pattern
 
@@ -59,42 +66,41 @@ namespace App\Application;
 
 use Apacheborys\KeycloakPhpClient\Service\KeycloakServiceInterface;
 use App\Keycloak\LocalUser;
+use App\Keycloak\KeycloakUserCloneFactory;
+use RuntimeException;
 
 final readonly class UserRoleUpdater
 {
-    public function __construct(private KeycloakServiceInterface $keycloakService)
-    {
+    public function __construct(
+        private KeycloakServiceInterface $keycloakService,
+        private KeycloakUserCloneFactory $userCloneFactory,
+    ) {
     }
 
     /**
      * @param list<string> $currentRoles
      * @param list<string> $newRoles
      */
-    public function updateRoles(LocalUser $baseUser, array $currentRoles, array $newRoles): void
+    public function updateRoles(LocalUser $baseUser, string $plainPassword, array $currentRoles, array $newRoles): void
     {
-        $oldVersion = new LocalUser(
-            username: $baseUser->getUsername(),
-            email: $baseUser->getEmail(),
-            firstName: $baseUser->getFirstName(),
-            lastName: $baseUser->getLastName(),
-            enabled: $baseUser->isEnabled(),
-            emailVerified: $baseUser->isEmailVerified(),
-            roles: $currentRoles,
-            id: $baseUser->getId(),
-        );
+        $currentUser = $this->keycloakService->findUser($baseUser);
+        $keycloakId = $currentUser->getKeycloakId();
+        if ($keycloakId === null) {
+            throw new RuntimeException('Expected persisted Keycloak id before reconciling roles.');
+        }
 
-        $newVersion = new LocalUser(
-            username: $baseUser->getUsername(),
-            email: $baseUser->getEmail(),
-            firstName: $baseUser->getFirstName(),
-            lastName: $baseUser->getLastName(),
-            enabled: $baseUser->isEnabled(),
-            emailVerified: $baseUser->isEmailVerified(),
+        $newUserVersion = $this->userCloneFactory->withKeycloakId(
+            localUser: $baseUser,
+            keycloakId: $keycloakId,
             roles: $newRoles,
-            id: $baseUser->getId(),
         );
 
-        $this->keycloakService->updateUser($oldVersion, $newVersion);
+        // Reconcile role assign/unassign through the public Keycloak role API.
+        // In this repository that logic is kept in a dedicated flow service.
+        $this->synchronizeRoles($keycloakId, $currentRoles, $newRoles);
+
+        // Afterwards, verify JWT projection against the new local role set.
+        $this->keycloakService->loginUser($newUserVersion, $plainPassword);
     }
 }
 ```

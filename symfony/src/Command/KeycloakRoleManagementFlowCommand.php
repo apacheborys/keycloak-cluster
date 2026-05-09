@@ -21,7 +21,7 @@ use Throwable;
 
 #[AsCommand(
     name: 'keycloak:role-management:flow',
-    description: 'Functional role-management flow via KeycloakServiceInterface: create user, update roles, verify, cleanup'
+    description: 'Functional role-management flow: create user, reconcile roles, verify JWT projection, cleanup'
 )]
 final class KeycloakRoleManagementFlowCommand extends Command
 {

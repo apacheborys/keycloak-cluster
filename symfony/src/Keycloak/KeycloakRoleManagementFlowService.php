@@ -59,7 +59,7 @@ final readonly class KeycloakRoleManagementFlowService
                 passwordDto: new PasswordDto(plainPassword: $plainPassword),
             );
 
-            $this->report($reportStep, 2, 'Update user roles through KeycloakServiceInterface');
+            $this->report($reportStep, 2, 'Reconcile user roles through public Keycloak role API');
             $newUserVersion = $this->userCloneFactory->withKeycloakId(
                 localUser: $localUser,
                 keycloakId: $createdUser->getKeycloakId(),
