@@ -39,6 +39,13 @@ This project already contains debug endpoints in `KeycloakJwtDebugController`:
 
 These endpoints demonstrate signature validation and claim extraction using bundle services.
 
+With the current bundle versions, this repository also treats JWT identification as a mapping concern:
+
+- the bundle can read a callsigned local-id claim such as `external_user_id`
+- `KeycloakJwtAuthenticator` can strip the callsign prefix before exposing the local user identifier
+
+For the mapper and fallback flows built around this behavior, see [Use Case 5](./05-custom-user-mapper.md) and [Use Case 7](./07-local-id-fallback-without-persisted-keycloak-id.md).
+
 ## Example: explicit verification inside a service
 
 ```php

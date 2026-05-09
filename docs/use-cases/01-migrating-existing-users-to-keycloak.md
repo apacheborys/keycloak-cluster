@@ -93,7 +93,7 @@ final readonly class LegacyUsersToKeycloakMigrator
                     $passwordDto = $this->buildPasswordDto($legacyUser);
                     $created = $this->keycloakService->createUser($localUser, $passwordDto);
 
-                    $legacyUser->markMigrated($created->getId());
+                    $legacyUser->markMigrated($created->getKeycloakId());
                     $this->legacyUserRepository->save($legacyUser, true);
 
                     return true;
@@ -151,6 +151,7 @@ final readonly class LegacyUsersToKeycloakMigrator
 
 ## Practical notes
 
+- In current bundle/client versions, `LocalUser::getId()` is your stable local identifier, while `getKeycloakId()` is the external Keycloak UUID returned after provisioning.
 - If you migrate `md5`, treat it as transitional and plan forced password rotation.
 - For large datasets, keep transaction scope per user (or per very small chunk) and avoid one transaction for the whole batch.
 - Keep migration logs and error reasons per user.

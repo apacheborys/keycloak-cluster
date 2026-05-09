@@ -84,7 +84,7 @@ final readonly class RegisterUserService
                 passwordDto: new PasswordDto(plainPassword: $plainPassword),
             );
 
-            $user->markProvisionedInKeycloak($keycloakUser->getId());
+            $user->markProvisionedInKeycloak($keycloakUser->getKeycloakId());
             $this->entityManager->flush();
 
             return $user;
@@ -96,6 +96,7 @@ final readonly class RegisterUserService
 ## Synchronization considerations
 
 - Keep `keycloak_user_id` in local DB to simplify update/delete operations.
+- Persisting `keycloak_user_id` is still the recommended strategy, but with mapper-based local-id fallback the integration can continue to work even if `keycloakId` is temporarily unavailable locally.
 - When local roles change, call `updateUser(oldUserVersion, newUserVersion)`.
 - On user deletion, decide on hard delete vs disable, then call `deleteUser()` accordingly.
 - For high traffic systems, consider outbox/event-driven provisioning with retry policies.

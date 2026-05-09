@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Keycloak\Fixture\SymfonyFixtureUserStore;
+use App\Keycloak\JwtAuthorizationFlowInput;
 use App\Keycloak\KeycloakJwtAuthorizationFlowService;
 use App\Keycloak\KeycloakPasswordDtoFactory;
 use Psr\Log\LoggerInterface;
@@ -17,6 +18,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
 use Throwable;
 
 #[AsCommand(
@@ -25,6 +27,8 @@ use Throwable;
 )]
 final class KeycloakJwtAuthorizationFlowCommand extends Command
 {
+    use RendersValidationFailures;
+
     public function __construct(
         private readonly KeycloakJwtAuthorizationFlowService $flowService,
         private readonly KeycloakPasswordDtoFactory $passwordDtoFactory,
@@ -114,12 +118,14 @@ final class KeycloakJwtAuthorizationFlowCommand extends Command
             };
 
             $result = $this->flowService->runCreateLoginVerifyRefreshDelete(
-                localUser: $fixture->toLocalUser(),
-                passwordDto: $this->passwordDtoFactory->buildPlain($fixture->getPlainPassword()),
-                plainPasswordForLogin: $fixture->getPlainPassword(),
-                refreshRealm: $this->refreshRealm,
-                refreshClientId: $this->refreshClientId,
-                refreshClientSecret: $this->refreshClientSecret,
+                input: new JwtAuthorizationFlowInput(
+                    localUser: $fixture->toLocalUser(),
+                    passwordDto: $this->passwordDtoFactory->buildPlain($fixture->getPlainPassword()),
+                    plainPasswordForLogin: $fixture->getPlainPassword(),
+                    refreshRealm: $this->refreshRealm,
+                    refreshClientId: $this->refreshClientId,
+                    refreshClientSecret: $this->refreshClientSecret,
+                ),
                 cleanup: $cleanup,
                 reportStep: $reportStep,
             );
@@ -128,15 +134,26 @@ final class KeycloakJwtAuthorizationFlowCommand extends Command
             $refreshedPayload = $result->getRefreshResult()->getAccessToken()->getPayload();
 
             $io->success(sprintf(
-                'JWT flow passed for "%s" (id=%s). Access issuer=%s, refreshed issuer=%s, expires_in=%d.',
+                'JWT flow passed for "%s" (keycloak_id=%s). Access issuer=%s, refreshed issuer=%s, expires_in=%d.',
                 $fixture->getUsername(),
-                $result->getCreatedUser()->getId(),
+                $result->getCreatedUser()->getKeycloakId(),
                 $accessPayload->getIss(),
                 $refreshedPayload->getIss(),
                 $result->getRefreshResult()->getExpiresIn(),
             ));
 
             return Command::SUCCESS;
+        } catch (ValidationFailedException $exception) {
+            $this->logger->error('Keycloak JWT authorization flow validation failed.', [
+                'run_id' => $runId,
+                'message' => $exception->getMessage(),
+                'violations' => $this->formatValidationViolations($exception),
+                'exception' => $exception,
+            ]);
+
+            $this->renderValidationFailure($io, $exception, 'JWT authorization flow input is invalid.');
+
+            return Command::FAILURE;
         } catch (Throwable $exception) {
             $this->logger->error('Keycloak JWT authorization flow failed.', [
                 'run_id' => $runId,

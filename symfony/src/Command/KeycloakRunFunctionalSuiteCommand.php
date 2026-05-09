@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use Apacheborys\KeycloakPhpClient\ValueObject\HashAlgorithm;
+use App\Keycloak\FunctionalFlowInput;
 use App\Keycloak\KeycloakFunctionalFlowService;
 use App\Keycloak\KeycloakPasswordDtoFactory;
 use App\Keycloak\LocalUser;
@@ -16,6 +17,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
 use Throwable;
 
 #[AsCommand(
@@ -24,6 +26,8 @@ use Throwable;
 )]
 final class KeycloakRunFunctionalSuiteCommand extends Command
 {
+    use RendersValidationFailures;
+
     public function __construct(
         private readonly KeycloakFunctionalFlowService $flowService,
         private readonly KeycloakPasswordDtoFactory $passwordDtoFactory,
@@ -95,19 +99,38 @@ final class KeycloakRunFunctionalSuiteCommand extends Command
 
             try {
                 $result = $this->flowService->runCreateLoginRefreshDelete(
-                    localUser: $localUser,
-                    passwordDto: $passwordDto,
-                    plainPasswordForLogin: $password,
+                    input: new FunctionalFlowInput(
+                        localUser: $localUser,
+                        passwordDto: $passwordDto,
+                        plainPasswordForLogin: $password,
+                    ),
                     reportStep: $reportStep,
                 );
 
                 $io->success(sprintf(
-                    'Scenario "%s" passed (id=%s, expires_in=%d).',
+                    'Scenario "%s" passed (keycloak_id=%s, expires_in=%d).',
                     $label,
-                    $result->getCreatedUser()->getId(),
+                    $result->getCreatedUser()->getKeycloakId(),
                     $result->getRefreshResult()->getExpiresIn(),
                 ));
                 $passed++;
+            } catch (ValidationFailedException $e) {
+                $this->logger->error(
+                    'Keycloak functional suite scenario validation failed.',
+                    [
+                        'scenario' => $label,
+                        'message' => $e->getMessage(),
+                        'violations' => $this->formatValidationViolations($e),
+                        'exception' => $e,
+                    ]
+                );
+
+                $this->renderValidationFailure(
+                    $io,
+                    $e,
+                    sprintf('Scenario "%s" input is invalid.', $label),
+                );
+                $failed++;
             } catch (Throwable $e) {
                 $this->logger->error(
                     'Keycloak functional suite scenario failed.',

@@ -8,6 +8,19 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
   - `apacheborys/symfony-keycloak-bundle`
 - It provides a reproducible local setup to validate real Keycloak integration flows (user management, role management, JWT auth, custom mapper behavior).
 
+## Compatibility notes for current library versions
+- The demo is currently aligned with:
+  - `apacheborys/keycloak-php-client: 0.0.16`
+  - `apacheborys/symfony-keycloak-bundle: 0.0.7`
+- `KeycloakUserInterface` now separates:
+  - local stable id: `getId()`
+  - persisted external Keycloak id: `getKeycloakId()`
+- `keycloak_bridge.callsign` is now required. In this repository it namespaces local-id data exposed to Keycloak and JWTs, for example:
+  - attribute: `external-user-id`
+  - JWT claim: `external_user_id`
+- The demo now includes a dedicated local-id fallback flow where `keycloakId` is intentionally `null` and the libraries must continue working through the local-id attribute fallback.
+- Flow commands now validate their input with `symfony/validator` before making Keycloak calls. This keeps integration failures focused on library behavior instead of malformed local fixtures.
+
 ## Detailed documentation
 - Full documentation index: [docs/README.md](docs/README.md)
 - Use-case guides with Mermaid sequence diagrams and code examples:
@@ -16,7 +29,8 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
   - [Use Case 3: Local Registration with Keycloak as Source of Truth](docs/use-cases/03-local-registration-with-keycloak-source-of-truth.md)
   - [Use Case 4: JWT Identification for Protected Symfony Resources](docs/use-cases/04-jwt-identification-and-authorization.md)
   - [Use Case 5: Custom User Mapper for Advanced Domain Mapping](docs/use-cases/05-custom-user-mapper.md)
-  - [Use Case 6: Role Lifecycle Automation via KeycloakServiceInterface](docs/use-cases/06-role-management-lifecycle.md)
+  - [Use Case 6: Role Lifecycle Automation and JWT Role Verification](docs/use-cases/06-role-management-lifecycle.md)
+  - [Use Case 7: Operating Without Persisted Keycloak Id](docs/use-cases/07-local-id-fallback-without-persisted-keycloak-id.md)
 
 ## How to run
 - Requirements: Docker + Docker Compose.
@@ -115,14 +129,16 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
 - Full suite (plain + all hashed algorithms) with step-by-step output:
   - `docker compose exec symfony composer run keycloak:functional-suite`
 
-## Advanced Keycloak flows (new)
-- Role management flow (create user with initial roles -> update roles -> verify in JWT -> cleanup):
+## Advanced Keycloak flows
+- Role management flow (create user with initial roles -> reconcile roles -> verify in JWT -> cleanup):
   - `docker compose exec symfony composer run keycloak:role-flow`
 - JWT authorization flow (create/login/verify/refresh + cleanup):
   - `docker compose exec symfony composer run keycloak:jwt-flow`
 - Custom mapper flow (separate user entity mapper + JWT flow + cleanup):
   - `docker compose exec symfony composer run keycloak:mapper-flow`
-- Run the full all-in-one suite (functional suite + role/jwt/mapper flows):
+- Local-id fallback flow (operate with `keycloakId=null`, verify fallback find/update/delete + callsigned JWT identifier):
+  - `docker compose exec symfony composer run keycloak:local-id-fallback-flow`
+- Run the full all-in-one suite (functional suite + role/jwt/mapper/local-id-fallback flows):
   - `docker compose exec symfony composer run keycloak:advanced-suite`
 - Fresh install one-liner:
   - `docker compose exec symfony sh -lc 'php bin/console doctrine:migrations:migrate --no-interaction && composer run keycloak:advanced-suite'`
@@ -143,6 +159,7 @@ To keep data for debugging, pass `--no-cleanup` to a command.
 
 ## Extra mapper env vars
 Set these in `.env`:
+- `KEYCLOAK_BRIDGE_CALLSIGN`
 - `KEYCLOAK_BRIDGE_MAPPER_REALM`
 - `KEYCLOAK_BRIDGE_MAPPER_CLIENT_ID`
 - `KEYCLOAK_BRIDGE_MAPPER_CLIENT_SECRET`
