@@ -58,11 +58,13 @@
         "keycloak:role-flow": "XDEBUG_MODE=off php bin/console keycloak:role-management:flow",
         "keycloak:jwt-flow": "XDEBUG_MODE=off php bin/console keycloak:jwt-authorization:flow",
         "keycloak:mapper-flow": "XDEBUG_MODE=off php bin/console keycloak:custom-mapper:flow",
+        "keycloak:local-id-fallback-flow": "XDEBUG_MODE=off php bin/console keycloak:local-id-fallback:flow",
         "keycloak:advanced-suite": [
             "@keycloak:functional-suite",
             "@keycloak:role-flow",
             "@keycloak:jwt-flow",
-            "@keycloak:mapper-flow"
+            "@keycloak:mapper-flow",
+            "@keycloak:local-id-fallback-flow"
         ],
         "keycloak:functional-suite": "XDEBUG_MODE=off php bin/console keycloak:functional-suite",
         "post-install-cmd": [
