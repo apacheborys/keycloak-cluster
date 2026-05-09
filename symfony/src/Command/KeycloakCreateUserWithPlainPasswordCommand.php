@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Keycloak\FunctionalFlowInput;
 use App\Keycloak\KeycloakFunctionalFlowService;
 use App\Keycloak\KeycloakPasswordDtoFactory;
 use App\Keycloak\LocalUser;
@@ -15,6 +16,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
 use Throwable;
 
 #[AsCommand(
@@ -23,6 +25,8 @@ use Throwable;
 )]
 final class KeycloakCreateUserWithPlainPasswordCommand extends Command
 {
+    use RendersValidationFailures;
+
     public function __construct(
         private readonly KeycloakFunctionalFlowService $flowService,
         private readonly KeycloakPasswordDtoFactory $passwordDtoFactory,
@@ -76,9 +80,11 @@ final class KeycloakCreateUserWithPlainPasswordCommand extends Command
         try {
             $io->section('Functional flow (plain password)');
             $result = $this->flowService->runCreateLoginRefreshDelete(
-                localUser: $localUser,
-                passwordDto: $passwordDto,
-                plainPasswordForLogin: $plainPassword,
+                input: new FunctionalFlowInput(
+                    localUser: $localUser,
+                    passwordDto: $passwordDto,
+                    plainPasswordForLogin: $plainPassword,
+                ),
                 reportStep: $reportStep,
             );
 
@@ -90,6 +96,19 @@ final class KeycloakCreateUserWithPlainPasswordCommand extends Command
             ));
 
             return Command::SUCCESS;
+        } catch (ValidationFailedException $e) {
+            $this->logger->error(
+                'Keycloak functional command validation failed.',
+                [
+                    'message' => $e->getMessage(),
+                    'violations' => $this->formatValidationViolations($e),
+                    'exception' => $e,
+                ]
+            );
+
+            $this->renderValidationFailure($io, $e, 'Functional flow input is invalid.');
+
+            return Command::FAILURE;
         } catch (Throwable $e) {
             $this->logger->error(
                 'Keycloak functional command failed.',

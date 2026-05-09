@@ -20,6 +20,8 @@ use RuntimeException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Throwable;
 
 final readonly class KeycloakJwtAuthorizationFlowService
@@ -32,19 +34,23 @@ final readonly class KeycloakJwtAuthorizationFlowService
         #[AutowireIterator('keycloak.user_entity_config')]
         private iterable $userEntityConfigs,
         private CallsignValuePrefixer $callsignValuePrefixer,
+        private ValidatorInterface $validator,
     ) {
     }
 
     public function runCreateLoginVerifyRefreshDelete(
-        KeycloakUserInterface $localUser,
-        PasswordDto $passwordDto,
-        string $plainPasswordForLogin,
-        string $refreshRealm,
-        string $refreshClientId,
-        string $refreshClientSecret,
+        JwtAuthorizationFlowInput $input,
         bool $cleanup = true,
         ?callable $reportStep = null,
     ): JwtAuthorizationFlowResult {
+        $this->validateInput($input);
+
+        $localUser = $input->getLocalUser();
+        $passwordDto = $input->getPasswordDto();
+        $plainPasswordForLogin = $input->getPlainPasswordForLogin();
+        $refreshRealm = $input->getRefreshRealm();
+        $refreshClientId = $input->getRefreshClientId();
+        $refreshClientSecret = $input->getRefreshClientSecret();
         $createdUser = null;
         $flowError = null;
         $result = null;
@@ -132,6 +138,14 @@ final readonly class KeycloakJwtAuthorizationFlowService
         }
 
         return $result;
+    }
+
+    private function validateInput(JwtAuthorizationFlowInput $input): void
+    {
+        $violations = $this->validator->validate($input);
+        if ($violations->count() > 0) {
+            throw new ValidationFailedException($input, $violations);
+        }
     }
 
     private function authenticateJwt(string $jwt): bool

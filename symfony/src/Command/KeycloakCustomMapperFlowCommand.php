@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Keycloak\Fixture\SymfonyFixtureUserStore;
+use App\Keycloak\JwtAuthorizationFlowInput;
 use App\Keycloak\KeycloakJwtAuthorizationFlowService;
 use App\Keycloak\KeycloakPasswordDtoFactory;
 use LogicException;
@@ -18,6 +19,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
 use Throwable;
 
 #[AsCommand(
@@ -26,6 +28,8 @@ use Throwable;
 )]
 final class KeycloakCustomMapperFlowCommand extends Command
 {
+    use RendersValidationFailures;
+
     public function __construct(
         private readonly KeycloakJwtAuthorizationFlowService $flowService,
         private readonly KeycloakPasswordDtoFactory $passwordDtoFactory,
@@ -127,12 +131,14 @@ final class KeycloakCustomMapperFlowCommand extends Command
             };
 
             $result = $this->flowService->runCreateLoginVerifyRefreshDelete(
-                localUser: $fixture->toFixtureUser(),
-                passwordDto: $this->passwordDtoFactory->buildPlain($fixture->getPlainPassword()),
-                plainPasswordForLogin: $fixture->getPlainPassword(),
-                refreshRealm: $this->mapperRealm,
-                refreshClientId: $this->mapperClientId,
-                refreshClientSecret: $this->mapperClientSecret,
+                input: new JwtAuthorizationFlowInput(
+                    localUser: $fixture->toFixtureUser(),
+                    passwordDto: $this->passwordDtoFactory->buildPlain($fixture->getPlainPassword()),
+                    plainPasswordForLogin: $fixture->getPlainPassword(),
+                    refreshRealm: $this->mapperRealm,
+                    refreshClientId: $this->mapperClientId,
+                    refreshClientSecret: $this->mapperClientSecret,
+                ),
                 cleanup: $cleanup,
                 reportStep: $reportStep,
             );
@@ -181,6 +187,17 @@ final class KeycloakCustomMapperFlowCommand extends Command
             ));
 
             return Command::SUCCESS;
+        } catch (ValidationFailedException $exception) {
+            $this->logger->error('Keycloak custom mapper flow validation failed.', [
+                'run_id' => $runId,
+                'message' => $exception->getMessage(),
+                'violations' => $this->formatValidationViolations($exception),
+                'exception' => $exception,
+            ]);
+
+            $this->renderValidationFailure($io, $exception, 'Custom mapper flow input is invalid.');
+
+            return Command::FAILURE;
         } catch (Throwable $exception) {
             $this->logger->error('Keycloak custom mapper flow failed.', [
                 'run_id' => $runId,

@@ -11,12 +11,15 @@ use Apacheborys\KeycloakPhpClient\ValueObject\OidcGrantType;
 use LogicException;
 use RuntimeException;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Throwable;
 
 final readonly class KeycloakFunctionalFlowService
 {
     public function __construct(
         private KeycloakServiceInterface $keycloakService,
+        private ValidatorInterface $validator,
         #[Autowire('%env(KEYCLOAK_BRIDGE_CLIENT_REALM)%')]
         private string $clientRealm,
         #[Autowire('%env(KEYCLOAK_BRIDGE_CLIENT_ID)%')]
@@ -27,11 +30,14 @@ final readonly class KeycloakFunctionalFlowService
     }
 
     public function runCreateLoginRefreshDelete(
-        LocalUser $localUser,
-        PasswordDto $passwordDto,
-        string $plainPasswordForLogin,
+        FunctionalFlowInput $input,
         ?callable $reportStep = null,
     ): KeycloakFunctionalFlowResult {
+        $this->validateInput($input);
+
+        $localUser = $input->getLocalUser();
+        $passwordDto = $input->getPasswordDto();
+        $plainPasswordForLogin = $input->getPlainPasswordForLogin();
         $cleanupUser = null;
 
         try {
@@ -101,6 +107,14 @@ final readonly class KeycloakFunctionalFlowService
             }
 
             throw $e;
+        }
+    }
+
+    private function validateInput(FunctionalFlowInput $input): void
+    {
+        $violations = $this->validator->validate($input);
+        if ($violations->count() > 0) {
+            throw new ValidationFailedException($input, $violations);
         }
     }
 

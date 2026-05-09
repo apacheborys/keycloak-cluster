@@ -18,7 +18,6 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\Validator\ConstraintViolationInterface;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
 use Throwable;
 
@@ -28,6 +27,8 @@ use Throwable;
 )]
 final class KeycloakLocalIdFallbackFlowCommand extends Command
 {
+    use RendersValidationFailures;
+
     public function __construct(
         private readonly KeycloakLocalIdFallbackFlowService $flowService,
         private readonly KeycloakPasswordDtoFactory $passwordDtoFactory,
@@ -160,26 +161,11 @@ final class KeycloakLocalIdFallbackFlowCommand extends Command
             $this->logger->error('Keycloak local-id fallback flow validation failed.', [
                 'run_id' => $runId,
                 'message' => $exception->getMessage(),
-                'violations' => array_map(
-                    static fn (ConstraintViolationInterface $violation): string => sprintf(
-                        '%s: %s',
-                        $violation->getPropertyPath(),
-                        $violation->getMessage(),
-                    ),
-                    iterator_to_array($exception->getViolations()),
-                ),
+                'violations' => $this->formatValidationViolations($exception),
                 'exception' => $exception,
             ]);
 
-            $io->error('Local-id fallback flow input is invalid.');
-            foreach ($exception->getViolations() as $violation) {
-                $propertyPath = $violation->getPropertyPath();
-                $io->writeln(sprintf(
-                    '  - %s%s',
-                    $propertyPath !== '' ? $propertyPath . ': ' : '',
-                    $violation->getMessage(),
-                ));
-            }
+            $this->renderValidationFailure($io, $exception, 'Local-id fallback flow input is invalid.');
 
             return Command::FAILURE;
         } catch (Throwable $exception) {
