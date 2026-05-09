@@ -16,6 +16,9 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
   - typed Keycloak exception handling in `apacheborys/keycloak-php-client`
   - Symfony authenticator failure mapping in `apacheborys/symfony-keycloak-bundle`
 - JWT verification flows now exercise the bundle authenticator path directly, including explicit handling when the authenticator rejects a token.
+- `keycloak_bridge.security.expose_infrastructure_failure_status` is enabled by default in this test stand via `KEYCLOAK_BRIDGE_EXPOSE_INFRASTRUCTURE_FAILURE_STATUS=1`.
+  - `1` allows infrastructure and upstream availability failures such as JWKS fetch or Keycloak outages to surface as `429` / `502` / `503`.
+  - `0` forces those paths to return `401` instead, while the bundle still logs diagnostics through the configured Symfony logger.
 - `KeycloakUserInterface` now separates:
   - local stable id: `getId()`
   - persisted external Keycloak id: `getKeycloakId()`
@@ -178,3 +181,9 @@ Optional JWT/localhost proxy vars for Symfony container:
 - `KEYCLOAK_LOCALHOST_PROXY`
 - `KEYCLOAK_LOCALHOST_PROXY_PORT`
 - `KEYCLOAK_LOCALHOST_PROXY_TARGET`
+
+Keycloak infrastructure failure mapping:
+- `KEYCLOAK_BRIDGE_EXPOSE_INFRASTRUCTURE_FAILURE_STATUS`
+- Default: `1`
+- Set `1` to expose infrastructure and upstream failures as `429` / `502` / `503`.
+- Set `0` to force those failures to return `401` while still logging diagnostics.

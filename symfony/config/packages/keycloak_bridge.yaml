@@ -10,6 +10,8 @@ keycloak_bridge:
   cache_pool: 'cache.app'
   logger_service: 'logger'
   realm_list_ttl: 3600
+  security:
+    expose_infrastructure_failure_status: '%env(bool:KEYCLOAK_BRIDGE_EXPOSE_INFRASTRUCTURE_FAILURE_STATUS)%'
   user_entities:
     'App\\Keycloak\\LocalUser':
       realm: '%env(KEYCLOAK_BRIDGE_USER_REALM)%'

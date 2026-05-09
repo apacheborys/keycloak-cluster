@@ -10,6 +10,7 @@ use Apacheborys\KeycloakPhpClient\Entity\KeycloakUser;
 use Apacheborys\KeycloakPhpClient\Service\KeycloakServiceInterface;
 use Apacheborys\KeycloakPhpClient\ValueObject\OidcGrantType;
 use Apacheborys\SymfonyKeycloakBridgeBundle\Security\KeycloakJwtAuthenticator;
+use Apacheborys\SymfonyKeycloakBridgeBundle\Security\Exception\KeycloakJwtAuthenticationException;
 use LogicException;
 use RuntimeException;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
@@ -141,26 +142,44 @@ final readonly class KeycloakJwtAuthorizationFlowService
 
     private function authenticateJwt(string $jwt): bool
     {
-        $authenticator = $this->jwtAuthenticator;
-        $request = new Request(server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $jwt]);
-
-        if ($authenticator->supports($request) !== true) {
-            $token = JsonWebToken::fromRawToken(rawToken: $jwt);
-            $authenticator = $this->jwtAuthenticatorFactory->createForIssuer($token->getPayload()->getIss());
-            $request = new Request(server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $jwt]);
-
-            if ($authenticator->supports($request) !== true) {
-                throw new LogicException('KeycloakJwtAuthenticator does not support the provided JWT token.');
-            }
-        }
-
         try {
-            $authenticator->authenticate($request);
+            $this->authenticateWithAuthenticator(
+                authenticator: $this->jwtAuthenticator,
+                jwt: $jwt,
+            );
         } catch (AuthenticationException $exception) {
+            if (
+                $exception instanceof KeycloakJwtAuthenticationException
+                && $exception->getReasonCode() === KeycloakJwtAuthenticationException::REASON_UNSUPPORTED_ISSUER
+            ) {
+                try {
+                    $token = JsonWebToken::fromRawToken(rawToken: $jwt);
+                    $this->authenticateWithAuthenticator(
+                        authenticator: $this->jwtAuthenticatorFactory->createForIssuer($token->getPayload()->getIss()),
+                        jwt: $jwt,
+                    );
+
+                    return true;
+                } catch (AuthenticationException $derivedException) {
+                    throw new LogicException('KeycloakJwtAuthenticator rejected JWT token: ' . $derivedException->getMessage(), 0, $derivedException);
+                }
+            }
+
             throw new LogicException('KeycloakJwtAuthenticator rejected JWT token: ' . $exception->getMessage(), 0, $exception);
         }
 
         return true;
+    }
+
+    private function authenticateWithAuthenticator(KeycloakJwtAuthenticator $authenticator, string $jwt): void
+    {
+        $request = new Request(server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $jwt]);
+
+        if ($authenticator->supports($request) !== true) {
+            throw new LogicException('KeycloakJwtAuthenticator does not support the provided JWT token.');
+        }
+
+        $authenticator->authenticate($request);
     }
 
     private function report(?callable $reportStep, int $stepNumber, string $message): void

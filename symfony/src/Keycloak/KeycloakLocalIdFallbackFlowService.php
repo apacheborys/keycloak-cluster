@@ -14,6 +14,7 @@ use Apacheborys\KeycloakPhpClient\ValueObject\OidcGrantType;
 use Apacheborys\SymfonyKeycloakBridgeBundle\Model\UserEntityConfig;
 use Apacheborys\SymfonyKeycloakBridgeBundle\Security\KeycloakJwtAuthenticator;
 use Apacheborys\SymfonyKeycloakBridgeBundle\Security\KeycloakJwtUser;
+use Apacheborys\SymfonyKeycloakBridgeBundle\Security\Exception\KeycloakJwtAuthenticationException;
 use Apacheborys\SymfonyKeycloakBridgeBundle\Service\Internal\CallsignValuePrefixer;
 use LogicException;
 use RuntimeException;
@@ -21,6 +22,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -341,23 +343,28 @@ final readonly class KeycloakLocalIdFallbackFlowService
 
     private function authenticateJwtAndResolveUserIdentifier(string $jwt, string $expectedLocalUserId): string
     {
-        $authenticator = $this->jwtAuthenticator;
-        $request = new Request(server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $jwt]);
-
-        if ($authenticator->supports($request) !== true) {
-            $token = JsonWebToken::fromRawToken(rawToken: $jwt);
-            $authenticator = $this->jwtAuthenticatorFactory->createForIssuer($token->getPayload()->getIss());
-            $request = new Request(server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $jwt]);
-
-            if ($authenticator->supports($request) !== true) {
-                throw new LogicException('KeycloakJwtAuthenticator does not support the provided JWT token.');
-            }
-        }
-
         try {
-            $passport = $authenticator->authenticate($request);
+            $passport = $this->authenticateWithAuthenticator(
+                authenticator: $this->jwtAuthenticator,
+                jwt: $jwt,
+            );
         } catch (AuthenticationException $exception) {
-            throw new LogicException('KeycloakJwtAuthenticator rejected JWT token: ' . $exception->getMessage(), 0, $exception);
+            if (
+                $exception instanceof KeycloakJwtAuthenticationException
+                && $exception->getReasonCode() === KeycloakJwtAuthenticationException::REASON_UNSUPPORTED_ISSUER
+            ) {
+                try {
+                    $token = JsonWebToken::fromRawToken(rawToken: $jwt);
+                    $passport = $this->authenticateWithAuthenticator(
+                        authenticator: $this->jwtAuthenticatorFactory->createForIssuer($token->getPayload()->getIss()),
+                        jwt: $jwt,
+                    );
+                } catch (AuthenticationException $derivedException) {
+                    throw new LogicException('KeycloakJwtAuthenticator rejected JWT token: ' . $derivedException->getMessage(), 0, $derivedException);
+                }
+            } else {
+                throw new LogicException('KeycloakJwtAuthenticator rejected JWT token: ' . $exception->getMessage(), 0, $exception);
+            }
         }
 
         $userBadge = $passport->getBadge(UserBadge::class);
@@ -391,6 +398,17 @@ final readonly class KeycloakLocalIdFallbackFlowService
         }
 
         return $resolvedUserIdentifier;
+    }
+
+    private function authenticateWithAuthenticator(KeycloakJwtAuthenticator $authenticator, string $jwt): Passport
+    {
+        $request = new Request(server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $jwt]);
+
+        if ($authenticator->supports($request) !== true) {
+            throw new LogicException('KeycloakJwtAuthenticator does not support the provided JWT token.');
+        }
+
+        return $authenticator->authenticate($request);
     }
 
     private function verifyDeletion(FixtureUser $user): bool
