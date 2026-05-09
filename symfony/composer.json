@@ -7,7 +7,7 @@
         "php": ">=8.2",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "apacheborys/symfony-keycloak-bundle": "0.0.7",
+        "apacheborys/symfony-keycloak-bundle": "0.0.8",
         "doctrine/doctrine-bundle": "^3.2",
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.6",

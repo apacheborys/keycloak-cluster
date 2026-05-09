@@ -10,8 +10,12 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
 
 ## Compatibility notes for current library versions
 - The demo is currently aligned with:
-  - `apacheborys/keycloak-php-client: 0.0.16`
-  - `apacheborys/symfony-keycloak-bundle: 0.0.7`
+  - `apacheborys/keycloak-php-client: 0.0.17`
+  - `apacheborys/symfony-keycloak-bundle: 0.0.8`
+- The demo now covers the release line that adds:
+  - typed Keycloak exception handling in `apacheborys/keycloak-php-client`
+  - Symfony authenticator failure mapping in `apacheborys/symfony-keycloak-bundle`
+- JWT verification flows now exercise the bundle authenticator path directly, including explicit handling when the authenticator rejects a token.
 - `KeycloakUserInterface` now separates:
   - local stable id: `getId()`
   - persisted external Keycloak id: `getKeycloakId()`

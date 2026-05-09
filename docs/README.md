@@ -38,7 +38,8 @@ The suite validates:
 
 ## Current version notes
 
-- This repository currently targets `apacheborys/keycloak-php-client 0.0.16` and `apacheborys/symfony-keycloak-bundle 0.0.7`.
+- This repository currently targets `apacheborys/keycloak-php-client 0.0.17` and `apacheborys/symfony-keycloak-bundle 0.0.8`.
+- The current demo release line covers typed Keycloak exception handling in the client and Symfony authenticator failure mapping in the bundle.
 - `getId()` is treated as the stable local identifier, while `getKeycloakId()` is the persisted external Keycloak UUID.
 - `keycloak_bridge.callsign` is mandatory and is used to namespace the local-id attribute / JWT claim seen in Keycloak.
 

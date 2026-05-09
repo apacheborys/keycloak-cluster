@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a06d2023fde8597d2fa1f1ab45708a9f",
+    "content-hash": "de8b150d44d7e44b541373c6068fb3cd",
     "packages": [
         {
             "name": "apacheborys/keycloak-php-client",
-            "version": "0.0.16",
+            "version": "0.0.17",
             "source": {
                 "type": "git",
                 "url": "https://github.com/apacheborys/keycloak-php-client.git",
-                "reference": "2c028b93efd3b1f1e3c1a4eaf391979d15113f3d"
+                "reference": "061f8c6784345780fe9c46014e16ef426f33acc9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/apacheborys/keycloak-php-client/zipball/2c028b93efd3b1f1e3c1a4eaf391979d15113f3d",
-                "reference": "2c028b93efd3b1f1e3c1a4eaf391979d15113f3d",
+                "url": "https://api.github.com/repos/apacheborys/keycloak-php-client/zipball/061f8c6784345780fe9c46014e16ef426f33acc9",
+                "reference": "061f8c6784345780fe9c46014e16ef426f33acc9",
                 "shasum": ""
             },
             "require": {
@@ -88,28 +88,29 @@
             ],
             "description": "This bundle helps to communicate your PHP application with Keycloak",
             "support": {
-                "source": "https://github.com/apacheborys/keycloak-php-client/tree/0.0.16",
+                "source": "https://github.com/apacheborys/keycloak-php-client/tree/0.0.17",
                 "issues": "https://github.com/apacheborys/keycloak-php-client/issues"
             },
-            "time": "2026-05-05T18:59:50+00:00"
+            "time": "2026-05-09T14:43:50+00:00"
         },
         {
             "name": "apacheborys/symfony-keycloak-bundle",
-            "version": "0.0.7",
+            "version": "0.0.8",
             "source": {
                 "type": "git",
                 "url": "https://github.com/apacheborys/symfony-keycloak-bundle.git",
-                "reference": "34b8697d8416950a70bc60a34d78e64a42326443"
+                "reference": "b55c6ebaa0acc280c458c08815ff16bb068d3d53"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/apacheborys/symfony-keycloak-bundle/zipball/34b8697d8416950a70bc60a34d78e64a42326443",
-                "reference": "34b8697d8416950a70bc60a34d78e64a42326443",
+                "url": "https://api.github.com/repos/apacheborys/symfony-keycloak-bundle/zipball/b55c6ebaa0acc280c458c08815ff16bb068d3d53",
+                "reference": "b55c6ebaa0acc280c458c08815ff16bb068d3d53",
                 "shasum": ""
             },
             "require": {
-                "apacheborys/keycloak-php-client": "^0.0.16",
+                "apacheborys/keycloak-php-client": "^0.0.17",
                 "php": "^8.3",
+                "psr/log": "^3.0",
                 "symfony/config": "^7.4",
                 "symfony/dependency-injection": "^7.4",
                 "symfony/framework-bundle": "^7.4",
@@ -160,10 +161,10 @@
             ],
             "description": "Symfony bundle that bridges Keycloak PHP client into Symfony applications.",
             "support": {
-                "source": "https://github.com/apacheborys/symfony-keycloak-bundle/tree/0.0.7",
+                "source": "https://github.com/apacheborys/symfony-keycloak-bundle/tree/0.0.8",
                 "issues": "https://github.com/apacheborys/symfony-keycloak-bundle/issues"
             },
-            "time": "2026-05-06T19:36:14+00:00"
+            "time": "2026-05-09T18:46:34+00:00"
         },
         {
             "name": "beberlei/assert",

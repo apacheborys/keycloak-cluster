@@ -702,6 +702,9 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     cache_pool?: scalar|Param|null, // Default: null
  *     logger_service?: scalar|Param|null, // Default: null
  *     realm_list_ttl?: int|Param, // Default: 3600
+ *     security?: array{
+ *         expose_infrastructure_failure_status?: bool|Param, // Default: true
+ *     },
  *     user_entities?: array<string, array{ // Default: []
  *         realm?: scalar|Param|null,
  *         attributes_map?: list<array{ // Default: []
