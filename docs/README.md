@@ -32,7 +32,7 @@ The suite validates:
 - user creation with plain password
 - user creation with hashed passwords (`argon`, `bcrypt`, `md5`)
 - role update flow
-- JWT verification and refresh flow
+- JWT verification and refresh flow, including direct debug verification and the real `/api/protected/me` firewall path
 - authenticator failure response mapping
 - custom mapper flow
 - local-id fallback flow without persisted `keycloakId`
@@ -40,9 +40,18 @@ The suite validates:
 ## Current version notes
 
 - This repository currently targets `apacheborys/keycloak-php-client 0.0.17` and `apacheborys/symfony-keycloak-bundle 0.0.8`.
-- The current demo release line covers typed Keycloak exception handling in the client and Symfony authenticator failure mapping in the bundle.
+- The current demo release line covers typed Keycloak HTTP exceptions in the client and safe Symfony authenticator failure mapping in the bundle.
+- Typed client exceptions exercised in this stack include `KeycloakRateLimitException`, `KeycloakInvalidResponseException`, `KeycloakServerException`, `KeycloakTransportException`, `KeycloakAuthenticationException`, and `KeycloakAuthorizationException`.
 - `keycloak_bridge.security.expose_infrastructure_failure_status` is wired through `KEYCLOAK_BRIDGE_EXPOSE_INFRASTRUCTURE_FAILURE_STATUS` and defaults to `1` in this stack.
 - Use `1` to let infrastructure and upstream failures return `429` / `502` / `503`; use `0` to force those paths to return `401` while keeping diagnostics in the logs.
+- Minimal authenticator responses are returned to clients, for example:
+  ```json
+  {
+    "message": "Authentication failed.",
+    "reason": "keycloak_unavailable"
+  }
+  ```
+- HTTP clients never receive raw JWTs, `Authorization` headers, `client_secret`, `access_token`, `refresh_token`, passwords, or raw Keycloak response bodies.
 - `getId()` is treated as the stable local identifier, while `getKeycloakId()` is the persisted external Keycloak UUID.
 - `keycloak_bridge.callsign` is mandatory and is used to namespace the local-id attribute / JWT claim seen in Keycloak.
 
