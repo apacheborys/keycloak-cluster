@@ -23,7 +23,7 @@ use Throwable;
 
 #[AsCommand(
     name: 'keycloak:jwt-authorization:flow',
-    description: 'Functional JWT flow: create user, login, verify JWT, refresh token, cleanup'
+    description: 'Functional JWT flow: create user, login, verify JWT endpoints, refresh token, cleanup'
 )]
 final class KeycloakJwtAuthorizationFlowCommand extends Command
 {
@@ -114,7 +114,7 @@ final class KeycloakJwtAuthorizationFlowCommand extends Command
 
             $io->section(sprintf('JWT authorization flow (run_id=%s)', $runId));
             $reportStep = static function (int $stepNumber, string $message) use ($io): void {
-                $io->writeln(sprintf('  [%d/6] %s', $stepNumber, $message));
+                $io->writeln(sprintf('  [%d] %s', $stepNumber, $message));
             };
 
             $result = $this->flowService->runCreateLoginVerifyRefreshDelete(
@@ -132,6 +132,14 @@ final class KeycloakJwtAuthorizationFlowCommand extends Command
 
             $accessPayload = $result->getLoginResult()->getAccessToken()->getPayload();
             $refreshedPayload = $result->getRefreshResult()->getAccessToken()->getPayload();
+
+            $io->writeln('  [ok] Direct verify endpoint passed.');
+            $io->writeln(sprintf(
+                '  [ok] Protected authenticator endpoint passed (user_identifier=%s, role=%s).',
+                $result->getProtectedEndpointUserIdentifier(),
+                $result->getProtectedEndpointExpectedRole(),
+            ));
+            $io->writeln('  [ok] Negative authenticator checks passed.');
 
             $io->success(sprintf(
                 'JWT flow passed for "%s" (keycloak_id=%s). Access issuer=%s, refreshed issuer=%s, expires_in=%d.',
