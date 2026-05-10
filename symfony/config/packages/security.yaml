@@ -1,0 +1,14 @@
+security:
+  firewalls:
+    dev:
+      pattern: ^/(_(profiler|wdt)|css|images|js)/
+      security: false
+
+    keycloak_api:
+      pattern: ^/api/protected
+      stateless: true
+      custom_authenticators:
+        - Apacheborys\SymfonyKeycloakBridgeBundle\Security\KeycloakJwtAuthenticator
+
+  access_control:
+    - { path: ^/api/protected, roles: IS_AUTHENTICATED_FULLY }

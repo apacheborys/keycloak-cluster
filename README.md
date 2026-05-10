@@ -25,6 +25,7 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
 - `keycloak_bridge.callsign` is now required. In this repository it namespaces local-id data exposed to Keycloak and JWTs, for example:
   - attribute: `external-user-id`
   - JWT claim: `external_user_id`
+- `KEYCLOAK_BRIDGE_BASE_URL` defaults to `http://localhost:8080` in this test stand so the real Symfony authenticator accepts the issuer published in local JWTs.
 - The demo now includes a dedicated local-id fallback flow where `keycloakId` is intentionally `null` and the libraries must continue working through the local-id attribute fallback.
 - Flow commands now validate their input with `symfony/validator` before making Keycloak calls. This keeps integration failures focused on library behavior instead of malformed local fixtures.
 
@@ -163,6 +164,14 @@ To keep data for debugging, pass `--no-cleanup` to a command.
 - Introspect authenticated token payload:
   - `GET http://localhost:8000/api/keycloak/me`
   - Requires `Authorization: Bearer <token>`
+- Authenticator-protected route:
+  - `GET http://localhost:8000/api/protected/me`
+  - Requires `Authorization: Bearer <token>`
+  - This route goes through Symfony Security and `Apacheborys\\SymfonyKeycloakBridgeBundle\\Security\\KeycloakJwtAuthenticator`.
+
+Use the endpoints for different purposes:
+- `/api/keycloak/verify` and `/api/keycloak/me` are direct debug endpoints that call the JWT verification service without going through the Symfony firewall.
+- `/api/protected/me` is the real firewall-protected route and is the endpoint to use when validating authenticator success and controlled failure responses.
 
 ## Extra mapper env vars
 Set these in `.env`:

@@ -19,6 +19,7 @@
         "symfony/http-client": "7.4.*",
         "symfony/monolog-bundle": "^3.11.1",
         "symfony/runtime": "7.4.*",
+        "symfony/security-bundle": "7.4.*",
         "symfony/validator": "7.4.*",
         "symfony/yaml": "7.4.*"
     },
@@ -84,14 +85,26 @@
             "require": "7.4.*"
         }
     },
-     "repositories": [
+    "repositories": [
         {
-            "type": "vcs",
-            "url": "https://github.com/apacheborys/keycloak-php-client"
+            "type": "path",
+            "url": "/app/keycloak-php-client",
+            "options": {
+                "symlink": true
+            },
+            "versions": {
+                "apacheborys/keycloak-php-client": "0.0.17"
+            }
         },
         {
-            "type": "vcs",
-            "url": "https://github.com/apacheborys/symfony-keycloak-bundle"
+            "type": "path",
+            "url": "/app/symfony-keycloak-bundle",
+            "options": {
+                "symlink": true
+            },
+            "versions": {
+                "apacheborys/symfony-keycloak-bundle": "0.0.8"
+            }
         }
     ]
 }
