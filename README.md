@@ -10,14 +10,30 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
 
 ## Compatibility notes for current library versions
 - The demo is currently aligned with:
-  - `apacheborys/keycloak-php-client: 0.0.16`
-  - `apacheborys/symfony-keycloak-bundle: 0.0.7`
+  - `apacheborys/keycloak-php-client: 0.0.17`
+  - `apacheborys/symfony-keycloak-bundle: 0.0.8`
+- The demo now covers the release line that adds:
+  - typed Keycloak HTTP exceptions in `apacheborys/keycloak-php-client`, including `KeycloakRateLimitException`, `KeycloakInvalidResponseException`, `KeycloakServerException`, `KeycloakTransportException`, `KeycloakAuthenticationException`, and `KeycloakAuthorizationException`
+  - safe Symfony authenticator failure mapping in `apacheborys/symfony-keycloak-bundle`
+- JWT verification flows now exercise the bundle authenticator path directly, including explicit handling when the authenticator rejects a token.
+- `keycloak_bridge.security.expose_infrastructure_failure_status` is enabled by default in this test stand via `KEYCLOAK_BRIDGE_EXPOSE_INFRASTRUCTURE_FAILURE_STATUS=1`.
+  - `1` allows infrastructure and upstream availability failures such as JWKS fetch or Keycloak outages to surface as `429` / `502` / `503`.
+  - `0` forces those paths to return `401` instead, while the bundle still logs diagnostics through the configured Symfony logger.
+- The firewall-protected authenticator route returns minimal safe JSON such as:
+  ```json
+  {
+    "message": "Authentication failed.",
+    "reason": "keycloak_unavailable"
+  }
+  ```
+- Neither the authenticator nor the debug endpoints expose raw JWTs, `Authorization` headers, `client_secret`, `access_token`, `refresh_token`, passwords, or raw Keycloak response bodies to HTTP clients.
 - `KeycloakUserInterface` now separates:
   - local stable id: `getId()`
   - persisted external Keycloak id: `getKeycloakId()`
 - `keycloak_bridge.callsign` is now required. In this repository it namespaces local-id data exposed to Keycloak and JWTs, for example:
   - attribute: `external-user-id`
   - JWT claim: `external_user_id`
+- `KEYCLOAK_BRIDGE_BASE_URL` defaults to `http://localhost:8080` in this test stand so the real Symfony authenticator accepts the issuer published in local JWTs.
 - The demo now includes a dedicated local-id fallback flow where `keycloakId` is intentionally `null` and the libraries must continue working through the local-id attribute fallback.
 - Flow commands now validate their input with `symfony/validator` before making Keycloak calls. This keeps integration failures focused on library behavior instead of malformed local fixtures.
 
@@ -132,13 +148,15 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
 ## Advanced Keycloak flows
 - Role management flow (create user with initial roles -> reconcile roles -> verify in JWT -> cleanup):
   - `docker compose exec symfony composer run keycloak:role-flow`
-- JWT authorization flow (create/login/verify/refresh + cleanup):
+- JWT authorization flow (create/login + direct debug verify + protected Symfony authenticator smoke checks + refresh + cleanup):
   - `docker compose exec symfony composer run keycloak:jwt-flow`
+- Authenticator failure flow (synthetic verification failures, validates `KeycloakJwtAuthenticator` status/reason mapping without real Keycloak outage injection):
+  - `docker compose exec symfony composer run keycloak:authenticator-failure-flow`
 - Custom mapper flow (separate user entity mapper + JWT flow + cleanup):
   - `docker compose exec symfony composer run keycloak:mapper-flow`
 - Local-id fallback flow (operate with `keycloakId=null`, verify fallback find/update/delete + callsigned JWT identifier):
   - `docker compose exec symfony composer run keycloak:local-id-fallback-flow`
-- Run the full all-in-one suite (functional suite + role/jwt/mapper/local-id-fallback flows):
+- Run the full all-in-one suite (functional suite + role/jwt/authenticator-failure/mapper/local-id-fallback flows):
   - `docker compose exec symfony composer run keycloak:advanced-suite`
 - Fresh install one-liner:
   - `docker compose exec symfony sh -lc 'php bin/console doctrine:migrations:migrate --no-interaction && composer run keycloak:advanced-suite'`
@@ -150,12 +168,34 @@ By default, flows clean up both:
 To keep data for debugging, pass `--no-cleanup` to a command.
 
 ## JWT debug endpoints (Symfony HTTP)
-- Verify token:
+- Direct debug verification endpoints:
   - `POST http://localhost:8000/api/keycloak/verify`
-  - Bearer token in `Authorization` header, or JSON body: `{\"token\":\"...\"}`
-- Introspect authenticated token payload:
+  - Accepts Bearer token in `Authorization` header, or JSON body: `{"token":"..."}`
+  - Calls `KeycloakJwtVerificationServiceInterface` directly and can return scrubbed Keycloak diagnostics for typed upstream failures.
   - `GET http://localhost:8000/api/keycloak/me`
   - Requires `Authorization: Bearer <token>`
+  - Calls `KeycloakJwtVerificationServiceInterface` directly and returns decoded JWT identity/role data after successful verification.
+- Real firewall-protected endpoint:
+  - `GET http://localhost:8000/api/protected/me`
+  - Requires `Authorization: Bearer <token>`
+  - Goes through Symfony Security and `Apacheborys\\SymfonyKeycloakBridgeBundle\\Security\\KeycloakJwtAuthenticator`.
+- Use the endpoints for different purposes:
+  - `/api/keycloak/verify` and `/api/keycloak/me` are direct debug endpoints that do not go through the Symfony firewall.
+  - `/api/protected/me` is the route to use when validating real authenticator success and controlled authenticator failure responses.
+- Authenticator failure behavior:
+  - `KEYCLOAK_BRIDGE_EXPOSE_INFRASTRUCTURE_FAILURE_STATUS=1` is the default.
+  - `1` allows infrastructure and upstream failures to surface as `429`, `502`, or `503`.
+  - `0` forces all authentication failures to return `401`, while safe diagnostics still go to logs.
+  - Example protected-route failure response:
+    ```json
+    {
+      "message": "Authentication failed.",
+      "reason": "keycloak_unavailable"
+    }
+    ```
+- Safe output rules:
+  - Clients never receive raw JWTs, `Authorization` headers, `client_secret`, `access_token`, `refresh_token`, passwords, or raw Keycloak response bodies.
+  - Debug endpoints may include scrubbed fields such as method, URI, status code, Keycloak error code, and correlation id for troubleshooting.
 
 ## Extra mapper env vars
 Set these in `.env`:
@@ -174,3 +214,9 @@ Optional JWT/localhost proxy vars for Symfony container:
 - `KEYCLOAK_LOCALHOST_PROXY`
 - `KEYCLOAK_LOCALHOST_PROXY_PORT`
 - `KEYCLOAK_LOCALHOST_PROXY_TARGET`
+
+Keycloak infrastructure failure mapping:
+- `KEYCLOAK_BRIDGE_EXPOSE_INFRASTRUCTURE_FAILURE_STATUS`
+- Default: `1`
+- Set `1` to expose infrastructure and upstream failures as `429` / `502` / `503`.
+- Set `0` to force those failures to return `401` while still logging safe diagnostics.

@@ -7,7 +7,7 @@
         "php": ">=8.2",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "apacheborys/symfony-keycloak-bundle": "0.0.7",
+        "apacheborys/symfony-keycloak-bundle": "0.0.8",
         "doctrine/doctrine-bundle": "^3.2",
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.6",
@@ -19,6 +19,7 @@
         "symfony/http-client": "7.4.*",
         "symfony/monolog-bundle": "^3.11.1",
         "symfony/runtime": "7.4.*",
+        "symfony/security-bundle": "7.4.*",
         "symfony/validator": "7.4.*",
         "symfony/yaml": "7.4.*"
     },
@@ -58,12 +59,14 @@
         },
         "keycloak:role-flow": "XDEBUG_MODE=off php bin/console keycloak:role-management:flow",
         "keycloak:jwt-flow": "XDEBUG_MODE=off php bin/console keycloak:jwt-authorization:flow",
+        "keycloak:authenticator-failure-flow": "XDEBUG_MODE=off php bin/console keycloak:authenticator-failure:flow",
         "keycloak:mapper-flow": "XDEBUG_MODE=off php bin/console keycloak:custom-mapper:flow",
         "keycloak:local-id-fallback-flow": "XDEBUG_MODE=off php bin/console keycloak:local-id-fallback:flow",
         "keycloak:advanced-suite": [
             "@keycloak:functional-suite",
             "@keycloak:role-flow",
             "@keycloak:jwt-flow",
+            "@keycloak:authenticator-failure-flow",
             "@keycloak:mapper-flow",
             "@keycloak:local-id-fallback-flow"
         ],
@@ -84,14 +87,26 @@
             "require": "7.4.*"
         }
     },
-     "repositories": [
+    "repositories": [
         {
-            "type": "vcs",
-            "url": "https://github.com/apacheborys/keycloak-php-client"
+            "type": "path",
+            "url": "/app/keycloak-php-client",
+            "options": {
+                "symlink": true
+            },
+            "versions": {
+                "apacheborys/keycloak-php-client": "0.0.17"
+            }
         },
         {
-            "type": "vcs",
-            "url": "https://github.com/apacheborys/symfony-keycloak-bundle"
+            "type": "path",
+            "url": "/app/symfony-keycloak-bundle",
+            "options": {
+                "symlink": true
+            },
+            "versions": {
+                "apacheborys/symfony-keycloak-bundle": "0.0.8"
+            }
         }
     ]
 }

@@ -5,6 +5,13 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use Apacheborys\KeycloakPhpClient\Entity\JsonWebToken;
+use Apacheborys\KeycloakPhpClient\Exception\KeycloakAuthenticationException;
+use Apacheborys\KeycloakPhpClient\Exception\KeycloakAuthorizationException;
+use Apacheborys\KeycloakPhpClient\Exception\KeycloakException;
+use Apacheborys\KeycloakPhpClient\Exception\KeycloakInvalidResponseException;
+use Apacheborys\KeycloakPhpClient\Exception\KeycloakRateLimitException;
+use Apacheborys\KeycloakPhpClient\Exception\KeycloakServerException;
+use Apacheborys\KeycloakPhpClient\Exception\KeycloakTransportException;
 use Apacheborys\KeycloakPhpClient\Service\KeycloakJwtVerificationServiceInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -30,14 +37,6 @@ final readonly class KeycloakJwtDebugController
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
 
-        $isValid = $this->jwtVerificationService->verifyJwt($token);
-        if (!$isValid) {
-            return new JsonResponse([
-                'valid' => false,
-                'message' => 'JWT signature or claims validation failed.',
-            ], JsonResponse::HTTP_UNAUTHORIZED);
-        }
-
         try {
             $jwt = JsonWebToken::fromRawToken($token);
         } catch (Throwable) {
@@ -45,6 +44,19 @@ final readonly class KeycloakJwtDebugController
                 'valid' => false,
                 'message' => 'JWT could not be parsed.',
             ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $isValid = $this->jwtVerificationService->verifyJwt($token);
+        } catch (KeycloakException $exception) {
+            return $this->buildVerificationFailureResponse($exception);
+        }
+
+        if (!$isValid) {
+            return new JsonResponse([
+                'valid' => false,
+                'message' => 'JWT signature or claims validation failed.',
+            ], JsonResponse::HTTP_UNAUTHORIZED);
         }
 
         $payload = $jwt->getPayload();
@@ -69,18 +81,24 @@ final readonly class KeycloakJwtDebugController
             ], JsonResponse::HTTP_UNAUTHORIZED);
         }
 
-        if (!$this->jwtVerificationService->verifyJwt($token)) {
-            return new JsonResponse([
-                'message' => 'JWT validation failed.',
-            ], JsonResponse::HTTP_UNAUTHORIZED);
-        }
-
         try {
             $jwt = JsonWebToken::fromRawToken($token);
         } catch (Throwable) {
             return new JsonResponse([
                 'message' => 'JWT is malformed.',
             ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $isValid = $this->jwtVerificationService->verifyJwt($token);
+        } catch (KeycloakException $exception) {
+            return $this->buildVerificationFailureResponse($exception);
+        }
+
+        if (!$isValid) {
+            return new JsonResponse([
+                'message' => 'JWT validation failed.',
+            ], JsonResponse::HTTP_UNAUTHORIZED);
         }
 
         $payload = $jwt->getPayload();
@@ -95,6 +113,45 @@ final readonly class KeycloakJwtDebugController
             'roles' => $this->extractRoles($jwt),
             'expires_at' => $payload->getExp()->format(DATE_ATOM),
         ]);
+    }
+
+    private function buildVerificationFailureResponse(KeycloakException $exception): JsonResponse
+    {
+        $statusCode = match (true) {
+            $exception instanceof KeycloakRateLimitException => JsonResponse::HTTP_TOO_MANY_REQUESTS,
+            $exception instanceof KeycloakInvalidResponseException => JsonResponse::HTTP_BAD_GATEWAY,
+            $exception instanceof KeycloakAuthenticationException => JsonResponse::HTTP_UNAUTHORIZED,
+            $exception instanceof KeycloakAuthorizationException => JsonResponse::HTTP_FORBIDDEN,
+            $exception instanceof KeycloakServerException,
+            $exception instanceof KeycloakTransportException => JsonResponse::HTTP_SERVICE_UNAVAILABLE,
+            default => JsonResponse::HTTP_SERVICE_UNAVAILABLE,
+        };
+
+        $reason = match (true) {
+            $exception instanceof KeycloakRateLimitException => 'keycloak_rate_limited',
+            $exception instanceof KeycloakInvalidResponseException => 'keycloak_invalid_response',
+            $exception instanceof KeycloakAuthenticationException => 'keycloak_authentication_failed',
+            $exception instanceof KeycloakAuthorizationException => 'keycloak_authorization_failed',
+            $exception instanceof KeycloakServerException,
+            $exception instanceof KeycloakTransportException => 'keycloak_unavailable',
+            default => 'keycloak_unavailable',
+        };
+
+        $context = $exception->getContext();
+
+        return new JsonResponse([
+            'valid' => false,
+            'message' => 'JWT verification failed.',
+            'reason' => $reason,
+            'keycloak' => [
+                'method' => $context->getMethod(),
+                'uri' => $this->normalizeOptionalText($context->getUri()),
+                'status_code' => $statusCode,
+                'error' => $this->sanitizeDiagnosticValue($context->getKeycloakError()),
+                'error_description' => $this->sanitizeDiagnosticValue($context->getKeycloakErrorDescription()),
+                'correlation_id' => $this->sanitizeDiagnosticValue($context->getCorrelationId()),
+            ],
+        ], $statusCode);
     }
 
     /**
@@ -119,6 +176,42 @@ final readonly class KeycloakJwtDebugController
         }
 
         return array_keys($roles);
+    }
+
+    private function normalizeOptionalText(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalizedValue = trim($value);
+
+        return $normalizedValue !== '' ? $normalizedValue : null;
+    }
+
+    private function sanitizeDiagnosticValue(?string $value): ?string
+    {
+        $normalizedValue = $this->normalizeOptionalText($value);
+        if ($normalizedValue === null) {
+            return null;
+        }
+
+        $patterns = [
+            '/Authorization\s*:\s*Bearer\s+\S+/i' => '[redacted credentials]',
+            '/\bBearer\s+\S+/i' => '[redacted credentials]',
+            '/\bAuthorization\b/i' => 'redacted',
+            '/\bBearer\b/i' => 'redacted',
+            '/\bclient_secret\b/i' => 'redacted',
+            '/\brefresh_token\b/i' => 'redacted',
+            '/\baccess_token\b/i' => 'redacted',
+            '/\bpassword\b/i' => 'redacted',
+        ];
+
+        foreach ($patterns as $pattern => $replacement) {
+            $normalizedValue = (string) preg_replace($pattern, $replacement, $normalizedValue);
+        }
+
+        return $normalizedValue;
     }
 
     private function extractTokenFromPayload(Request $request): ?string
