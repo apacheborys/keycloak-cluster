@@ -59,12 +59,14 @@
         },
         "keycloak:role-flow": "XDEBUG_MODE=off php bin/console keycloak:role-management:flow",
         "keycloak:jwt-flow": "XDEBUG_MODE=off php bin/console keycloak:jwt-authorization:flow",
+        "keycloak:authenticator-failure-flow": "XDEBUG_MODE=off php bin/console keycloak:authenticator-failure:flow",
         "keycloak:mapper-flow": "XDEBUG_MODE=off php bin/console keycloak:custom-mapper:flow",
         "keycloak:local-id-fallback-flow": "XDEBUG_MODE=off php bin/console keycloak:local-id-fallback:flow",
         "keycloak:advanced-suite": [
             "@keycloak:functional-suite",
             "@keycloak:role-flow",
             "@keycloak:jwt-flow",
+            "@keycloak:authenticator-failure-flow",
             "@keycloak:mapper-flow",
             "@keycloak:local-id-fallback-flow"
         ],

@@ -142,11 +142,13 @@ Local Keycloak 26.x cluster with two nodes, shared PostgreSQL database, and an e
   - `docker compose exec symfony composer run keycloak:role-flow`
 - JWT authorization flow (create/login/verify/refresh + cleanup):
   - `docker compose exec symfony composer run keycloak:jwt-flow`
+- Authenticator failure flow (synthetic verification failures, validates `KeycloakJwtAuthenticator` status/reason mapping without real Keycloak outage injection):
+  - `docker compose exec symfony composer run keycloak:authenticator-failure-flow`
 - Custom mapper flow (separate user entity mapper + JWT flow + cleanup):
   - `docker compose exec symfony composer run keycloak:mapper-flow`
 - Local-id fallback flow (operate with `keycloakId=null`, verify fallback find/update/delete + callsigned JWT identifier):
   - `docker compose exec symfony composer run keycloak:local-id-fallback-flow`
-- Run the full all-in-one suite (functional suite + role/jwt/mapper/local-id-fallback flows):
+- Run the full all-in-one suite (functional suite + role/jwt/authenticator-failure/mapper/local-id-fallback flows):
   - `docker compose exec symfony composer run keycloak:advanced-suite`
 - Fresh install one-liner:
   - `docker compose exec symfony sh -lc 'php bin/console doctrine:migrations:migrate --no-interaction && composer run keycloak:advanced-suite'`

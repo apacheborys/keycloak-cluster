@@ -33,6 +33,7 @@ The suite validates:
 - user creation with hashed passwords (`argon`, `bcrypt`, `md5`)
 - role update flow
 - JWT verification and refresh flow
+- authenticator failure response mapping
 - custom mapper flow
 - local-id fallback flow without persisted `keycloakId`
 
